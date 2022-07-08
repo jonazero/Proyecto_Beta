@@ -1,0 +1,11 @@
+#divexfont {
+  display: flex;
+  justify-content: center;
+}
+#divTry {
+  display: flex;
+  justify-content: flex-start;
+}
+.exfont {
+  font-size: 40px;
+}
