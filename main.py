@@ -31,6 +31,7 @@ hands = mp_hands.Hands(
 
 data = ""
 check_key = False
+test = False
 coords = json2dic('coords.json')
 
 
@@ -43,9 +44,12 @@ class VideoTransformTrack(MediaStreamTrack):
         self.transform = transform
 
     async def recv(self):
+        global check_key
+        global test
         frame = await self.track.recv()
-        if data:
-            test_key_coords(frame, coords, check_key)
+        if check_key == True:
+            test = test_key_coords(frame, coords)
+            check_key = False
         '''
         img = frame.to_ndarray(format="bgr24")
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -68,26 +72,22 @@ class VideoTransformTrack(MediaStreamTrack):
         return frame
 
 
-def test_key_coords(frame, coords, tecla):
-    global check_key
-    if tecla == True:
-        check_key = False
-        dis = json2dic('key_distribution.json')
-        img = frame.to_ndarray(format="bgr24")
-        img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
-        img.flags.writeable = False
-        results = hands.process(img)
-        if results.multi_hand_landmarks:
-            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
-                mano = results.multi_handedness[idx].classification[0].label
-                if data in dis[mano]:
-                    if abs(hand_landmarks.landmark[dis[mano][data]].x -
-                           coords[data][0]) < 0.03 and abs(hand_landmarks.landmark[dis[mano][data]].y -
-                                                           coords[data][1]) < 0.03:
-                        print("Bien")
-                    else:
-                        print("Mal")
-
+def test_key_coords(frame, coords):
+    dis = json2dic('key_distribution.json')
+    img = frame.to_ndarray(format="bgr24")
+    img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
+    img.flags.writeable = False
+    results = hands.process(img)
+    if results.multi_hand_landmarks:
+        for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+            mano = results.multi_handedness[idx].classification[0].label
+            if data in dis[mano]:
+                if abs(hand_landmarks.landmark[dis[mano][data]].x -
+                        coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y -
+                                                         coords[data][1]) < 0.025:
+                    return True
+                else:
+                    return False
 
 
 def create_local_tracks(play_from=None):
@@ -95,7 +95,7 @@ def create_local_tracks(play_from=None):
         player = MediaPlayer(play_from)
         return player.video
     else:
-        options = {"framerate": "20", "video_size": "640x480"}
+        options = {"framerate": "20", "video_size": "1280x720"}
         webcam = MediaPlayer("video=Integrated Camera",
                              format="dshow", options=options)
         relay = MediaRelay()
@@ -115,7 +115,7 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
         data = await websocket.receive_text()
         check_key = True
-        if data == "a":
+        if test == True:
             await websocket.send_text("Si")
         else:
             await websocket.send_text("No")
