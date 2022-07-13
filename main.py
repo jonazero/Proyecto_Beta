@@ -1,3 +1,8 @@
+from tkinter.tix import Tree
+from unittest import result
+import cv2
+from jsontools import json2dic
+import key_mapping
 from fastapi import FastAPI
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
@@ -6,12 +11,27 @@ from starlette.templating import Jinja2Templates
 from starlette.requests import Request
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaPlayer, MediaRelay, MediaBlackhole
+from av import VideoFrame
 import asyncio
+import mediapipe as mp
 from src.schemas import Offer
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+mp_drawing = mp.solutions.drawing_utils
+mp_hands = mp.solutions.hands
+mp_drawing_styles = mp.solutions.drawing_styles
+
+hands = mp_hands.Hands(
+    static_image_mode=False,
+    max_num_hands=2,
+    min_detection_confidence=0.5)
+
+data = ""
+check_key = False
+coords = json2dic('coords.json')
 
 
 class VideoTransformTrack(MediaStreamTrack):
@@ -24,7 +44,50 @@ class VideoTransformTrack(MediaStreamTrack):
 
     async def recv(self):
         frame = await self.track.recv()
+        if data:
+            test_key_coords(frame, coords, check_key)
+        '''
+        img = frame.to_ndarray(format="bgr24")
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img.flags.writeable = False
+        results = hands.process(img)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                mp_drawing.draw_landmarks(
+                    img,
+                    hand_landmarks,
+                    mp_hands.HAND_CONNECTIONS,
+                    mp_drawing_styles.get_default_hand_landmarks_style(),
+                    mp_drawing_styles.get_default_hand_connections_style())
+        new_frame = VideoFrame.from_ndarray(img, format="bgr24")
+        new_frame.pts = frame.pts
+        new_frame.time_base = frame.time_base
+        cv2.destroyAllWindows()
+        '''
         return frame
+
+
+def test_key_coords(frame, coords, tecla):
+    global check_key
+    if tecla == True:
+        check_key = False
+        dis = json2dic('key_distribution.json')
+        img = frame.to_ndarray(format="bgr24")
+        img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
+        img.flags.writeable = False
+        results = hands.process(img)
+        if results.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                mano = results.multi_handedness[idx].classification[0].label
+                if data in dis[mano]:
+                    if abs(hand_landmarks.landmark[dis[mano][data]].x -
+                           coords[data][0]) < 0.03 and abs(hand_landmarks.landmark[dis[mano][data]].y -
+                                                           coords[data][1]) < 0.03:
+                        print("Bien")
+                    else:
+                        print("Mal")
+
 
 
 def create_local_tracks(play_from=None):
@@ -47,9 +110,11 @@ async def index(request: Request):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    global data
+    global check_key
     while True:
         data = await websocket.receive_text()
-        print(data)
+        check_key = True
         if data == "a":
             await websocket.send_text("Si")
         else:
