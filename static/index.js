@@ -41,11 +41,6 @@ function createPeerConnection() {
   // register some listeners to help debugging
 
   // connect audio / video
-  pc.addEventListener("track", function (evt) {
-    if (evt.track.kind == "video")
-      document.getElementById("video").srcObject = evt.streams[0];
-    else document.getElementById("audio").srcObject = evt.streams[0];
-  });
 
   return pc;
 }
@@ -172,9 +167,6 @@ function start() {
   }
 
   if (constraints.audio || constraints.video) {
-    if (constraints.video) {
-      document.getElementById("media").style.display = "block";
-    }
     navigator.mediaDevices.getUserMedia(constraints).then(
       function (stream) {
         stream.getTracks().forEach(function (track) {

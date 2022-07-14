@@ -29,9 +29,7 @@ hands = mp_hands.Hands(
     max_num_hands=2,
     min_detection_confidence=0.5)
 
-data = ""
-check_key = False
-test = False
+frame_img = ""
 coords = json2dic('coords.json')
 
 
@@ -44,12 +42,9 @@ class VideoTransformTrack(MediaStreamTrack):
         self.transform = transform
 
     async def recv(self):
-        global check_key
-        global test
+        global frame_img
         frame = await self.track.recv()
-        if check_key == True:
-            test = test_key_coords(frame, coords)
-            check_key = False
+        frame_img = frame
         '''
         img = frame.to_ndarray(format="bgr24")
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -72,7 +67,7 @@ class VideoTransformTrack(MediaStreamTrack):
         return frame
 
 
-def test_key_coords(frame, coords):
+def test_key_coords(frame, coords, data):
     dis = json2dic('key_distribution.json')
     img = frame.to_ndarray(format="bgr24")
     img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
@@ -83,8 +78,8 @@ def test_key_coords(frame, coords):
             mano = results.multi_handedness[idx].classification[0].label
             if data in dis[mano]:
                 if abs(hand_landmarks.landmark[dis[mano][data]].x -
-                        coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y -
-                                                         coords[data][1]) < 0.025:
+                        coords[data][0]) < 0.030 and abs(hand_landmarks.landmark[dis[mano][data]].y -
+                                                         coords[data][1]) < 0.030:
                     return True
                 else:
                     return False
@@ -110,12 +105,10 @@ async def index(request: Request):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    global data
-    global check_key
     while True:
         data = await websocket.receive_text()
-        check_key = True
-        if test == True:
+        res = test_key_coords(frame_img, coords, data)
+        if res == True:
             await websocket.send_text("Si")
         else:
             await websocket.send_text("No")
