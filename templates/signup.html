@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicia sesion o crea una cuenta</title>
+    <link href="{{ url_for('static', path='/css/signup.css') }}" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('img', path='/LOGO.png') }}" type="image/x-icon">
+    <script src="https://kit.fontawesome.com/207706c9ac.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <div class="container" id="container">
+        <div class="form-container sign-up-container">
+            <form action="#">
+                <h1>Crea una cuenta</h1>
+                <div class="social-container">
+                    <a href="#" class="social"><i class="fab fa-facebook-f"></i></a>
+                    <a href="/auth/login" class="social"><i class="fab fa-google-plus-g"></i></a>
+                    <a href="#" class="social"><i class="fa-brands fa-microsoft"></i></a>
+                </div>
+                <span>O usa tu email para crear cuenta</span>
+                <input type="text" placeholder="Nombre" />
+                <input type="email" placeholder="Email" />
+                <input type="password" placeholder="Contraseña" />
+                <button>Crear cuenta</button>
+            </form>
+        </div>
+        <div class="form-container sign-in-container">
+            <form action="#">
+                <h1>Iniciar sesión</h1>
+                <div class="social-container">
+                    <a href="#" class="social"><i class="fab fa-facebook-f"></i></a>
+                    <a href="/auth/login" class="social"><i class="fab fa-google-plus-g"></i></a>
+                    <a href="#" class="social"><i class="fa-brands fa-microsoft"></i></a>
+                </div>
+                <span>o usa tu cuenta</span>
+                <input type="email" placeholder="Email" />
+                <input type="password" placeholder="Contraseña" />
+                <a href="#">¿Olvidaste tu contraseña?</a>
+                <button>Iniciar sesión</button>
+            </form>
+        </div>
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <h1>¡Bienvenido!</h1>
+                    <p>Para seguir usando FastKey porfavor, inicia sesión.</p>
+                    <button class="ghost" id="signIn">Iniciar sesión</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <h1>¡Hola!</h1>
+                    <p>Crea una cuenta para obtener los beneficios de FastKey</p>
+                    <button class="ghost" id="signUp">Crear cuenta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/signup.js"></script>
+</body>
+
+</html>

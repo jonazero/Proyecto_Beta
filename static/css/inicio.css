@@ -1,0 +1,215 @@
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@500&family=Poppins:wght@600&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Comfortaa', cursive;
+}
+
+body {
+    background-image: linear-gradient(260deg, #1CD6CE 0%, #293462 100%);
+}
+
+
+.navbar {
+    font-size: 20px;
+    background-color: rgba(0, 0, 0, 0.658);
+    padding-bottom: 10px;
+}
+
+#main-nav {
+    list-style-type: none;
+    display: none;
+    flex-direction: column;
+}
+
+#main-nav li {
+    text-align: center;
+    margin: 15px auto;
+}
+
+.nav-links,
+#logo {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#logo:hover,
+.nav-links:hover {
+    color: rgba(255, 255, 255, 1);
+}
+
+#logo {
+    display: inline-block;
+    margin-top: 10px;
+    margin-left: 20px;
+}
+
+#navbar-toggle {
+    position: absolute;
+    top: 50px;
+    right: 20px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 24px;
+}
+
+#navbar-toggle:hover {
+    color: rgba(255, 255, 255, 1);
+}
+
+@media screen and (min-width: 768px) {
+
+    .navbar {
+        display: flex;
+        justify-content: space-between;
+        padding-bottom: 0;
+        height: 120px;
+        align-items: center;
+    }
+
+    #main-nav {
+        display: flex !important;
+        margin-right: 30px;
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+
+    #main-nav li {
+        margin: 0;
+    }
+
+    .nav-links {
+        margin-left: 40px;
+    }
+
+    #logo {
+        margin-top: 0;
+    }
+
+    #navbar-toggle {
+        display: none;
+    }
+
+}
+
+
+@media (max-width: 745px) {
+    .waves {
+        height: 17vw;
+    }
+
+}
+
+.header {
+    margin-top: 13rem;
+    font-size: 25px;
+    position: relative;
+    text-align: center;
+    color: white;
+}
+
+.inner-header {
+    height: 25.0vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.flex {
+    /*Flexbox for containers*/
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.waves {
+    margin-top: 9.6rem;
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 20vh;
+}
+
+.content {
+    position: relative;
+    height: 15vh;
+    text-align: center;
+    background-color: white;
+}
+
+/* Animation */
+
+.parallax>use {
+    animation: move-forever 25s cubic-bezier(.55, .5, .45, .5) infinite;
+}
+
+.parallax>use:nth-child(1) {
+    animation-delay: -2s;
+    animation-duration: 7s;
+}
+
+.parallax>use:nth-child(2) {
+    animation-delay: -3s;
+    animation-duration: 10s;
+}
+
+.parallax>use:nth-child(3) {
+    animation-delay: -4s;
+    animation-duration: 13s;
+}
+
+.parallax>use:nth-child(4) {
+    animation-delay: -5s;
+    animation-duration: 20s;
+}
+
+@keyframes move-forever {
+    0% {
+        transform: translate(-90px, 0%);
+    }
+
+    100% {
+        transform: translate(85px, 0%);
+    }
+}
+
+span {
+    border-right: .05em solid;
+    animation: caret 1s steps(1) infinite;
+}
+
+@keyframes caret {
+    50% {
+        border-color: transparent;
+    }
+}
+
+.button-36 {
+    width: 100px;
+    background-color: rgba(0, 0, 0, 0.103);
+    border-radius: 8px;
+    border-style: double;
+    box-sizing: border-box;
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-family: "Inter UI", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    height: 3rem;
+    padding: 0 1.6rem;
+    text-align: center;
+    text-shadow: rgba(0, 0, 0, 0.25) 0 3px 8px;
+    transition: all .5s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.button-36:hover {
+    box-shadow: rgba(0, 0, 0, 0.411) 0 1px 30px;
+    transition-duration: .1s;
+}

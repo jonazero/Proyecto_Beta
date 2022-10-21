@@ -1,4 +1,4 @@
-var ws = new WebSocket("ws://localhost:8000/ws");
+//var ws = new WebSocket("ws://localhost:8000/ws");
 var dataChannelLog = document.getElementById("data-channel"),
   iceConnectionLog = document.getElementById("ice-connection-state"),
   iceGatheringLog = document.getElementById("ice-gathering-state"),
@@ -11,22 +11,22 @@ var pc = null;
 var dc = null,
   dcInterval = null;
 
+/*
 ws.onmessage = function (event) {
-  var texto = document.getElementById("text_input");
-  if (event.data == "No") {
-    let str = texto.value;
-    str = str.slice(0, str.length - 1);
-    texto.value = str;
-  }
+  let texto = document.getElementById("text_input");
+  let str = texto.value;
+  texto.value = str.concat(event.data);
 };
+*/
 
+/*
 document.addEventListener("keydown", (event) => {
   const keyName = event.key;
   ws.send(keyName);
-  keyName = "";
   event.preventDefault();
 });
 
+*/
 function createPeerConnection() {
   var config = {
     sdpSemantics: "unified-plan",
@@ -41,7 +41,11 @@ function createPeerConnection() {
   // register some listeners to help debugging
 
   // connect audio / video
-
+  pc.addEventListener("track", function (evt) {
+    if (evt.track.kind == "video")
+      document.getElementById("video").srcObject = evt.streams[0];
+    else document.getElementById("audio").srcObject = evt.streams[0];
+  });
   return pc;
 }
 
@@ -167,6 +171,9 @@ function start() {
   }
 
   if (constraints.audio || constraints.video) {
+    if (constraints.video) {
+      document.getElementById("media").style.display = "block";
+    }
     navigator.mediaDevices.getUserMedia(constraints).then(
       function (stream) {
         stream.getTracks().forEach(function (track) {
