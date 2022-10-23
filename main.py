@@ -167,6 +167,12 @@ async def offer(params: Offer):
     recorder = MediaBlackhole()
     relay = MediaRelay()
 
+    @pc.on("datachannel")
+    def on_datachannel(channel):
+        @channel.on("message")
+        def on_message(message):
+            channel.send(message)
+
     @pc.on("connectionstatechange")
     async def on_connectionstatechange():
         print("Connection state is %s" % pc.connectionState)
