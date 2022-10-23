@@ -1,4 +1,3 @@
-//var ws = new WebSocket("ws://localhost:8000/ws");
 var dataChannelLog = document.getElementById("data-channel"),
   iceConnectionLog = document.getElementById("ice-connection-state"),
   iceGatheringLog = document.getElementById("ice-gathering-state"),
@@ -8,32 +7,23 @@ var dataChannelLog = document.getElementById("data-channel"),
 var pc = null;
 
 // data channel
-var dc = null,
-  dcInterval = null;
+var dc = null;
 
-/*
-ws.onmessage = function (event) {
-  let texto = document.getElementById("text_input");
-  let str = texto.value;
-  texto.value = str.concat(event.data);
-};
-*/
-
-/*
-document.addEventListener("keydown", (event) => {
-  const keyName = event.key;
-  ws.send(keyName);
-  event.preventDefault();
-});
-
-*/
 function createPeerConnection() {
   var config = {
     sdpSemantics: "unified-plan",
   };
 
   if (document.getElementById("use-stun").checked) {
-    config.iceServers = [{ urls: ["stun:stun.l.google.com:19302"] }];
+    config.iceServers = [{
+      urls: ["stun:stun.l.google.com:19302"]
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credentials: 'openrelayproject'
+    }
+    ];
   }
 
   pc = new RTCPeerConnection(config);
