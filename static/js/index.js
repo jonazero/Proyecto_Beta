@@ -104,7 +104,6 @@ function negotiate() {
 }
 
 function start() {
-  navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
   if (window.stream) {
     window.stream.getTracks().forEach(track => {
       track.stop();
@@ -131,6 +130,7 @@ function start() {
     //navigator.mediaDevices.getUserMedia(constraints).then(gotStream).then(gotDevices).catch(handleError);
     navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
       stream.getTracks().forEach(function (track) {
+        navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
         pc.addTrack(track, stream);
       });
       return negotiate();
