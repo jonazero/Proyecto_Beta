@@ -126,7 +126,6 @@ function start() {
     video: { deviceId: videoSource ? { exact: videoSource } : undefined }
   };
   if (constraints.video) {
-    document.getElementById('media').style.display = 'block';
     //navigator.mediaDevices.getUserMedia(constraints).then(gotStream).then(gotDevices).catch(handleError);
     navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
       stream.getTracks().forEach(function (track) {

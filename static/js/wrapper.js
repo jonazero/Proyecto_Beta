@@ -1,4 +1,4 @@
-var ws = new WebSocket("ws://localhost:8000/ws");
+var ws = new WebSocket("ws://localhost:82/ws");
 
 const typingText = document.querySelector(".typing-text p"),
   inpField = document.querySelector(".wrapper .input-field"),

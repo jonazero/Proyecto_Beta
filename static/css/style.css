@@ -11,12 +11,30 @@
 
 body {
   background-image: linear-gradient(260deg, #1CD6CE 0%, #293462 100%);
+  height: 100vh;
+}
+
+.media {
+  display: flex;
+  justify-content: center;
+}
+
+video {
+  margin-top: 5%;
+  width: 400px;
 }
 
 .navbar {
   font-size: 20px;
   background-color: rgba(0, 0, 0, 0.349);
   padding-bottom: 10px;
+}
+
+#container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1%;
 }
 
 #main-nav {
@@ -102,11 +120,9 @@ body {
 
 .wrapper {
   display: flex;
+  margin-top: 8%;
   align-items: center;
-  padding-top: 10%;
-  padding-left: 20%;
-  padding-right: 20%;
-  border-radius: 10px;
+  justify-content: center;
   /*box-shadow: 0 10px 15px rgba(0, 0, 0, 0.05);*/
 }
 
@@ -117,7 +133,6 @@ body {
 }
 
 .wrapper .content-box {
-  padding: 13px 20px 0;
   border-radius: 10px;
 }
 
@@ -299,5 +314,9 @@ li:not(:first-child) span {
 
   .content button {
     margin-top: 10px;
+  }
+
+  video {
+    width: 100%;
   }
 }
