@@ -4,6 +4,7 @@ import mediapipe as mp
 import time
 import threading
 import os
+import concurrent.futures
 from fastapi import FastAPI
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
@@ -16,6 +17,7 @@ from src.schemas import Offer
 from src.jsontools import json2dic, dic2json
 from fastapi_sso.sso.google import GoogleSSO
 from os import getenv
+from concurrent.futures import ThreadPoolExecutor
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -46,6 +48,9 @@ SSO = GoogleSSO(client_id=GOOGLE_CLIENT_ID, client_secret=GOOGLE_SECRET,
                 redirect_uri="http://localhost:8000/camara", allow_insecure_http=True, use_state=False)
 
 
+executor = ThreadPoolExecutor(max_workers=4)
+
+
 class VideoTransformTrack(MediaStreamTrack):
     kind = "video"
 
@@ -63,13 +68,13 @@ class VideoTransformTrack(MediaStreamTrack):
 
 
 class ThreadTestCoords(threading.Thread):
-    def __init__(self, data, websocket):
+    def __init__(self, data, channel):
         threading.Thread.__init__(self)
         self.data = data
-        self.websocket = websocket
+        self.channel = channel
 
     def run(self):
-        between_callback(self.data, self.websocket)
+        between_callback(self.data, self.channel)
 
 
 def test_key_coords(frame, coords, data):
@@ -89,19 +94,19 @@ def test_key_coords(frame, coords, data):
                     return False
 
 
-async def test_keys(data, websocket):
-    print("LLEGUE")
+async def test_keys(data, channel):
     time.sleep(0.15)
     frame = frame_img.to_ndarray(format="bgr24")
-    #cv2.imwrite('c1.png', frame)
     frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
     results = hands.process(frame)
+    cv2.imwrite('c1.png', frame)
     if results.multi_hand_landmarks:
         for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
             mano = results.multi_handedness[idx].classification[0].label
             if data in dis[mano]:
                 if abs(hand_landmarks.landmark[dis[mano][data]].x - coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - coords[data][1]) < 0.025:
-                    await websocket.send_text(data)
+                    print("llegue")
+                    channel.send(data)
 
 
 """
@@ -141,13 +146,14 @@ async def camara(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
 
-def between_callback(data, websocket):
+def between_callback(data, channel):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(test_keys(data, websocket))
+    loop.run_until_complete(test_keys(data, channel))
     loop.close()
 
 
+'''
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -157,6 +163,8 @@ async def websocket_endpoint(websocket: WebSocket):
         threads.pop().start()
         #_thread = threading.Thread(target=between_callback, args=(data, websocket))
         # _thread.start()
+
+'''
 
 
 @app.post("/offer_cv")
@@ -170,8 +178,8 @@ async def offer(params: Offer):
     @pc.on("datachannel")
     def on_datachannel(channel):
         @channel.on("message")
-        def on_message(message):
-            channel.send(message)
+        async def on_message(message):
+            f = executor.submit(between_callback, message, channel)
 
     @pc.on("connectionstatechange")
     async def on_connectionstatechange():
