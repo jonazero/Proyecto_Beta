@@ -130,7 +130,12 @@ function start() {
     console.log("data channel created");
   };
   dc.onmessage = function (evt) {
-    console.log(evt.data);
+    if (evt.data) {
+      console.log(evt.data);
+      initTyping(evt.data);
+      evt.data = "";
+      inpField.focus();
+    };
   };
   const videoSource = videoSelect.value;
   const constraints = {
@@ -204,20 +209,22 @@ function loadParagraph() {
     typingText.innerHTML += span;
   });
   typingText.querySelectorAll("span")[0].classList.add("active");
-  document.addEventListener("keydown", () => inpField.focus());
+  document.addEventListener("keydown", presion);
   typingText.addEventListener("click", () => inpField.focus());
 }
 
-function initTyping() {
+function presion(event) {
+  dc.send(event.key);
+};
+
+function initTyping(kp) {
   let characters = typingText.querySelectorAll("span");
-  let typedChar = inpField.value.split("")[charIndex];
-  dc.send(typedChar);
   if (charIndex < characters.length - 1 && timeLeft > 0) {
     if (!isTyping) {
       timer = setInterval(initTimer, 1000);
       isTyping = true;
     }
-    if (typedChar == null) {
+    if (kp == null) {
       if (charIndex > 0) {
         charIndex--;
         if (characters[charIndex].classList.contains("incorrect")) {
@@ -226,7 +233,7 @@ function initTyping() {
         characters[charIndex].classList.remove("correct", "incorrect");
       }
     } else {
-      if (characters[charIndex].innerText == typedChar) {
+      if (characters[charIndex].innerText == kp) {
         characters[charIndex].classList.add("correct");
       } else {
         mistakes++;
@@ -273,5 +280,4 @@ function resetGame() {
 }
 
 loadParagraph();
-inpField.addEventListener("input", initTyping);
 tryAgainBtn.addEventListener("click", resetGame);

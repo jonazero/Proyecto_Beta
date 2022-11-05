@@ -48,7 +48,7 @@ SSO = GoogleSSO(client_id=GOOGLE_CLIENT_ID, client_secret=GOOGLE_SECRET,
                 redirect_uri="http://localhost:8000/camara", allow_insecure_http=True, use_state=False)
 
 
-executor = ThreadPoolExecutor(max_workers=4)
+executor = ThreadPoolExecutor(max_workers=8)
 
 
 class VideoTransformTrack(MediaStreamTrack):
@@ -62,6 +62,7 @@ class VideoTransformTrack(MediaStreamTrack):
     async def recv(self):
         global frame_img
         frame = await self.track.recv()
+        print(frame)
         frame_img = frame
 
         return frame
@@ -96,6 +97,7 @@ def test_key_coords(frame, coords, data):
 
 async def test_keys(data, channel):
     time.sleep(0.15)
+    print(frame_img)
     frame = frame_img.to_ndarray(format="bgr24")
     frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
     results = hands.process(frame)
@@ -105,8 +107,9 @@ async def test_keys(data, channel):
             mano = results.multi_handedness[idx].classification[0].label
             if data in dis[mano]:
                 if abs(hand_landmarks.landmark[dis[mano][data]].x - coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - coords[data][1]) < 0.025:
-                    print("llegue")
                     channel.send(data)
+                else:
+                    return
 
 
 """
