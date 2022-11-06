@@ -17,11 +17,12 @@ body {
 .media {
   display: flex;
   justify-content: center;
+  max-width: 400px;
 }
 
 video {
+  width: 100%;
   margin-top: 5%;
-  width: 400px;
 }
 
 .navbar {

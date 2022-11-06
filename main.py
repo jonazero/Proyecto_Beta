@@ -62,9 +62,7 @@ class VideoTransformTrack(MediaStreamTrack):
     async def recv(self):
         global frame_img
         frame = await self.track.recv()
-        print(frame)
         frame_img = frame
-
         return frame
 
 
@@ -96,20 +94,23 @@ def test_key_coords(frame, coords, data):
 
 
 async def test_keys(data, channel):
-    time.sleep(0.15)
-    print(frame_img)
-    frame = frame_img.to_ndarray(format="bgr24")
-    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-    results = hands.process(frame)
-    cv2.imwrite('c1.png', frame)
-    if results.multi_hand_landmarks:
-        for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
-            mano = results.multi_handedness[idx].classification[0].label
-            if data in dis[mano]:
-                if abs(hand_landmarks.landmark[dis[mano][data]].x - coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - coords[data][1]) < 0.025:
-                    channel.send(data)
-                else:
-                    return
+    if frame_img.width > 900:
+        time.sleep(0.15)
+        frame = frame_img.to_ndarray(format="bgr24")
+        frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+        results = hands.process(frame)
+        #cv2.imwrite('c1.png', frame)
+        if results.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                mano = results.multi_handedness[idx].classification[0].label
+                if data in dis[mano]:
+                    if abs(hand_landmarks.landmark[dis[mano][data]].x - coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - coords[data][1]) < 0.025:
+                        channel.send(data)
+                    else:
+                        print(data)
+                        cv2.imwrite('c1.png', frame)
+    else:
+        print(data, ": ", frame_img.width)
 
 
 """

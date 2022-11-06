@@ -1,3 +1,3 @@
 const paragraphs = [
-    "fijate que ponzoña de whisky, exclamaba grave. ",
+    "grave que ponzoña de whisky, exclamaba grave. ",
 ];

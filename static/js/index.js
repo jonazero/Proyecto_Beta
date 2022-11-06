@@ -11,7 +11,7 @@ const typingText = document.querySelector(".typing-text p"),
   cpmTag = document.querySelector(".cpm span");
 
 let timer,
-  maxTime = 60,
+  maxTime = 600,
   timeLeft = maxTime,
   charIndex = mistakes = isTyping = 0;
 
@@ -56,7 +56,7 @@ function createPeerConnection() {
   var config = { sdpSemantics: "unified-plan" };
   config.iceServers = [
     {
-      urls: "stun:openrelay.metered.ca:80",
+      urls: ['stun:stun.l.google.com:19302'],
     },
     {
       urls: "turn:openrelay.metered.ca:80",
@@ -131,7 +131,6 @@ function start() {
   };
   dc.onmessage = function (evt) {
     if (evt.data) {
-      console.log(evt.data);
       initTyping(evt.data);
       evt.data = "";
       inpField.focus();
@@ -139,7 +138,8 @@ function start() {
   };
   const videoSource = videoSelect.value;
   const constraints = {
-    video: { deviceId: videoSource ? { exact: videoSource } : undefined }
+    audio: false,
+    video: { deviceId: videoSource, width: { min: 900, max: 1920 }, height: { min: 700, max: 1080 } }
   };
   if (constraints.video) {
     //navigator.mediaDevices.getUserMedia(constraints).then(gotStream).then(gotDevices).catch(handleError);
