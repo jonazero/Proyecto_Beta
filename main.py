@@ -4,7 +4,7 @@ import mediapipe as mp
 import time
 import threading
 import os
-import concurrent.futures
+import numpy as np
 from fastapi import FastAPI
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
@@ -34,7 +34,6 @@ hands = mp_hands.Hands(
     min_detection_confidence=0.5)
 
 frame_img = ""
-coords = json2dic('./src/coords.json')
 
 dis = json2dic('./src/key_distribution.json')
 
@@ -49,6 +48,13 @@ SSO = GoogleSSO(client_id=GOOGLE_CLIENT_ID, client_secret=GOOGLE_SECRET,
 
 
 executor = ThreadPoolExecutor(max_workers=8)
+
+width = 960
+height = 720
+dim = (width, height)
+
+coords = {}
+first = True
 
 
 class VideoTransformTrack(MediaStreamTrack):
@@ -76,41 +82,64 @@ class ThreadTestCoords(threading.Thread):
         between_callback(self.data, self.channel)
 
 
-def test_key_coords(frame, coords, data):
-    img = frame.to_ndarray(format="bgr24")
-    img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
-    img.flags.writeable = False
-    results = hands.process(img)
+class ThreadTestCoords2(threading.Thread):
+    def __init__(self, data):
+        threading.Thread.__init__(self)
+        self.data = data
+
+    def run(self):
+        between_callback2(self.data)
+
+
+async def set_keys(data):
+    global coords
+    global first
+    time.sleep(0.15)
+    print(data)
+    if data == "27":
+        first = False
+        for data in coords:
+            coords[data] = np.divide(coords[data], coords[data][3]).tolist()
+            coords[data].pop()
+        dic2json("./src/coords.json", coords)
+        return
+    frame = frame_img.to_ndarray(format="bgr24")
+    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+    frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+    results = hands.process(frame)
+    if results.multi_hand_landmarks:
+        for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+            mano = results.multi_handedness[idx].classification[0].label
+            mp_drawing.draw_landmarks(
+                frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            cv2.imwrite("c1.png", frame)
+            if data in dis[mano]:
+                if data in coords:
+                    coords[data] = np.add(coords[data], [hand_landmarks.landmark[dis[mano][data]].x,
+                                                         hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1]).tolist()
+                else:
+                    coords[data] = ([hand_landmarks.landmark[dis[mano][data]].x,
+                                    hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1])
+    else:
+        print("Enfoque la camara")
+
+
+async def test_keys(data, channel):
+    time.sleep(0.15)
+    frame = frame_img.to_ndarray(format="bgr24")
+    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+    # Redimensiona la imagen para que las coordenadas no cambien
+    frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+    results = hands.process(frame)
+    #cv2.imwrite('c1.png', frame)
     if results.multi_hand_landmarks:
         for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
             mano = results.multi_handedness[idx].classification[0].label
             if data in dis[mano]:
-                if abs(hand_landmarks.landmark[dis[mano][data]].x -
-                        coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y -
-                                                         coords[data][1]) < 0.025:
-                    return True
+                if abs(hand_landmarks.landmark[dis[mano][data]].x - coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - coords[data][1]) < 0.025:
+                    channel.send(data)
                 else:
-                    return False
-
-
-async def test_keys(data, channel):
-    if frame_img.width > 900:
-        time.sleep(0.15)
-        frame = frame_img.to_ndarray(format="bgr24")
-        frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-        results = hands.process(frame)
-        #cv2.imwrite('c1.png', frame)
-        if results.multi_hand_landmarks:
-            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
-                mano = results.multi_handedness[idx].classification[0].label
-                if data in dis[mano]:
-                    if abs(hand_landmarks.landmark[dis[mano][data]].x - coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - coords[data][1]) < 0.025:
-                        channel.send(data)
-                    else:
-                        print(data)
-                        cv2.imwrite('c1.png', frame)
-    else:
-        print(data, ": ", frame_img.width)
+                    cv2.imwrite('c1.png', frame)
 
 
 """
@@ -157,6 +186,13 @@ def between_callback(data, channel):
     loop.close()
 
 
+def between_callback2(data):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(set_keys(data))
+    loop.close()
+
+
 '''
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -183,7 +219,10 @@ async def offer(params: Offer):
     def on_datachannel(channel):
         @channel.on("message")
         async def on_message(message):
-            f = executor.submit(between_callback, message, channel)
+            if first == True:
+                executor.submit(between_callback2, message)
+            else:
+                executor.submit(between_callback, message, channel)
 
     @pc.on("connectionstatechange")
     async def on_connectionstatechange():

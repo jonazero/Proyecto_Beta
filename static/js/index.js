@@ -209,12 +209,12 @@ function loadParagraph() {
     typingText.innerHTML += span;
   });
   typingText.querySelectorAll("span")[0].classList.add("active");
-  document.addEventListener("keydown", presion);
+  document.addEventListener("keypress", presion);
   typingText.addEventListener("click", () => inpField.focus());
 }
 
 function presion(event) {
-  dc.send(event.key);
+  dc.send(event.charCode.toString());
 };
 
 function initTyping(kp) {
