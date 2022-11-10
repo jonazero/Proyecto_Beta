@@ -28,9 +28,16 @@
     </ul>
   </nav>
 
-  <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/all.js"
-    integrity="sha384-xymdQtn1n3lH2wcu0qhcdaOpQwyoarkgLVxC/wZ5q7h9gHtxICrpcaSUfygqZGOe"
-    crossorigin="anonymous"></script>
+  <audio id="sound-key" controls style="display:none">
+    <source src="{{ url_for('audio', path='/type.mp3') }}" type="audio/mpeg"> Your browser does
+    not support the audio element.
+  </audio>
+
+  <audio id="sound-mistake" controls style="display: none">
+    <source src="{{ url_for('audio', path='/mistake.mp3') }}" type="audio/mpeg"> Your browser does
+    not support the audio element.
+  </audio>
+
 
   <div class="wrapper">
     <input type="text" class="input-field">
@@ -71,7 +78,9 @@
   </div>
   <script src="/static/js/paragraph.js"></script>
   <script src="/static/js/index.js"></script>
-
+  <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/all.js"
+    integrity="sha384-xymdQtn1n3lH2wcu0qhcdaOpQwyoarkgLVxC/wZ5q7h9gHtxICrpcaSUfygqZGOe"
+    crossorigin="anonymous"></script>
 
 </body>
 

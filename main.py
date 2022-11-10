@@ -22,6 +22,7 @@ app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/img", StaticFiles(directory="img"), name="img")
+app.mount("/audio", StaticFiles(directory="audio"), name="audio")
 templates = Jinja2Templates(directory="templates")
 
 mp_drawing = mp.solutions.drawing_utils
@@ -94,9 +95,7 @@ class ThreadTestCoords2(threading.Thread):
 async def set_keys(data):
     global coords
     global first
-    time.sleep(0.15)
-    print(data)
-    if data == "27":
+    if data == "Escape":
         first = False
         for data in coords:
             coords[data] = np.divide(coords[data], coords[data][3]).tolist()
@@ -113,6 +112,7 @@ async def set_keys(data):
             mp_drawing.draw_landmarks(
                 frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             cv2.imwrite("c1.png", frame)
+            print(dis)
             if data in dis[mano]:
                 if data in coords:
                     coords[data] = np.add(coords[data], [hand_landmarks.landmark[dis[mano][data]].x,

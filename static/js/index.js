@@ -131,6 +131,7 @@ function start() {
   };
   dc.onmessage = function (evt) {
     if (evt.data) {
+      playSound('sound-key');
       initTyping(evt.data);
       evt.data = "";
       inpField.focus();
@@ -209,13 +210,31 @@ function loadParagraph() {
     typingText.innerHTML += span;
   });
   typingText.querySelectorAll("span")[0].classList.add("active");
-  document.addEventListener("keypress", presion);
+  document.addEventListener("keydown", sendNormalChar);
   typingText.addEventListener("click", () => inpField.focus());
 }
 
-function presion(event) {
-  dc.send(event.charCode.toString());
+function sendNormalChar(event) {
+  dc.send(event.key);
 };
+
+function playSound(id) {
+  const audioElement = document.getElementById(id);
+  resetAll();
+  if (audioElement.paused) {
+    audioElement.play();
+  }
+
+};
+
+function resetAll() {
+  const audioElements = document.querySelectorAll('audio[id^="sound-"]');
+  audioElements.forEach(audioElement => {
+    audioElement.pause();
+    audioElement.currentTime = 0;
+  });
+};
+
 
 function initTyping(kp) {
   let characters = typingText.querySelectorAll("span");
@@ -238,6 +257,7 @@ function initTyping(kp) {
       } else {
         mistakes++;
         characters[charIndex].classList.add("incorrect");
+        playSound('sound-mistake')
       }
       charIndex++;
     }
