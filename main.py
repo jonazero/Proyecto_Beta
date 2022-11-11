@@ -30,9 +30,9 @@ mp_hands = mp.solutions.hands
 mp_drawing_styles = mp.solutions.drawing_styles
 
 hands = mp_hands.Hands(
-    static_image_mode=False,
+    static_image_mode=True,
     max_num_hands=2,
-    min_detection_confidence=0.5)
+    min_detection_confidence=0.5, min_tracking_confidence=0.8, model_complexity=1)
 
 frame_img = ""
 
@@ -95,24 +95,27 @@ class ThreadTestCoords2(threading.Thread):
 async def set_keys(data):
     global coords
     global first
+    time.sleep(0.15)
+    frame = frame_img.to_ndarray(format="bgr24")
+    frame = cv2.cvtColor(cv2.flip(frame, 2), cv2.COLOR_BGR2RGB)
+    frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+    results = hands.process(frame)
     if data == "Escape":
         first = False
         for data in coords:
             coords[data] = np.divide(coords[data], coords[data][3]).tolist()
+            nuevo = cv2.circle(
+                frame, (int(coords[data][0] * 960), int(coords[data][1] * 720)), 2, (255, 0, 0), 2)
             coords[data].pop()
+        cv2.imwrite("c1.png", nuevo)
         dic2json("./src/coords.json", coords)
         return
-    frame = frame_img.to_ndarray(format="bgr24")
-    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-    frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
-    results = hands.process(frame)
     if results.multi_hand_landmarks:
         for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
             mano = results.multi_handedness[idx].classification[0].label
             mp_drawing.draw_landmarks(
                 frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-            cv2.imwrite("c1.png", frame)
-            print(dis)
+            #cv2.imwrite("c1.png", frame)
             if data in dis[mano]:
                 if data in coords:
                     coords[data] = np.add(coords[data], [hand_landmarks.landmark[dis[mano][data]].x,
@@ -120,6 +123,7 @@ async def set_keys(data):
                 else:
                     coords[data] = ([hand_landmarks.landmark[dis[mano][data]].x,
                                     hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1])
+
     else:
         print("Enfoque la camara")
 
@@ -132,14 +136,18 @@ async def test_keys(data, channel):
     frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
     results = hands.process(frame)
     #cv2.imwrite('c1.png', frame)
-    if results.multi_hand_landmarks:
-        for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
-            mano = results.multi_handedness[idx].classification[0].label
-            if data in dis[mano]:
-                if abs(hand_landmarks.landmark[dis[mano][data]].x - coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - coords[data][1]) < 0.025:
-                    channel.send(data)
-                else:
-                    cv2.imwrite('c1.png', frame)
+    if data == " ":
+        channel.send(data)
+    else:
+        if results.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                mano = results.multi_handedness[idx].classification[0].label
+                if data in dis[mano]:
+                    if abs(hand_landmarks.landmark[dis[mano][data]].x - coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - coords[data][1]) < 0.025:
+                        channel.send(data)
+                    else:
+                        cv2.imwrite('c1.png', frame)
+                        print("Error")
 
 
 """
