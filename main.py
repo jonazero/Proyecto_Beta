@@ -33,9 +33,9 @@ mp_drawing_styles = mp.solutions.drawing_styles
 hands = mp_hands.Hands(
     static_image_mode=True,
     max_num_hands=2,
-    min_detection_confidence=0.5, min_tracking_confidence=0.8, model_complexity=1)
+    min_detection_confidence=0.5, min_tracking_confidence=0.5, model_complexity=0)
 
-frame_img = ""
+frame_img = None
 
 dis = json2dic('./src/key_distribution.json')
 
@@ -68,38 +68,31 @@ class VideoTransformTrack(MediaStreamTrack):
     async def recv(self):
         global frame_img
         frame = await self.track.recv()
-        frame_img = frame
+        img = frame.to_ndarray(format="bgr24")
+        img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
+        frame_img = img
         if coords and first == False:
-            img = frame.to_ndarray(format="bgr24")
-            img = cv2.cvtColor(cv2.flip(img, 2), cv2.COLOR_BGR2RGB)
-            #img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
             for data in coords:
                 img = cv2.circle(
                     img, (int(coords[data][0] * frame.width), int(coords[data][1] * frame.height)), 2, (255, 0, 0), 2)
-            nf = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            nf = VideoFrame.from_ndarray(nf, format="bgr24")
-            nf.pts = frame.pts
-            nf.time_base = frame.time_base
-            return nf
-        return frame
+        nf = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        nf = VideoFrame.from_ndarray(nf, format="bgr24")
+        nf.pts = frame.pts
+        nf.time_base = frame.time_base
+        return nf
 
 
 async def set_keys(data):
     global coords
     global first
     time.sleep(0.15)
-    frame = frame_img.to_ndarray(format="bgr24")
-    frame = cv2.cvtColor(cv2.flip(frame, 2), cv2.COLOR_BGR2RGB)
+    frame = frame_img
     frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
     results = hands.process(frame)
     if data == "Escape":
         first = False
         for data in coords:
             coords[data] = np.divide(coords[data], coords[data][3]).tolist()
-            nuevo = cv2.circle(
-                frame, (int(coords[data][0] * 960), int(coords[data][1] * 720)), 2, (255, 0, 0), 2)
-            coords[data].pop()
-        cv2.imwrite("c1.png", nuevo)
         dic2json("./src/coords.json", coords)
         return
     if results.multi_hand_landmarks:
@@ -107,7 +100,6 @@ async def set_keys(data):
             mano = results.multi_handedness[idx].classification[0].label
             mp_drawing.draw_landmarks(
                 frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-            # cv2.imwrite("c1.png", frame)
             if data in dis[mano]:
                 if data in coords:
                     coords[data] = np.add(coords[data], [hand_landmarks.landmark[dis[mano][data]].x,
@@ -122,8 +114,7 @@ async def set_keys(data):
 
 async def test_keys(data, channel):
     time.sleep(0.15)
-    frame = frame_img.to_ndarray(format="bgr24")
-    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+    frame = frame_img
     # Redimensiona la imagen para que las coordenadas no cambien
     frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
     results = hands.process(frame)
