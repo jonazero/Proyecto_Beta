@@ -33,7 +33,7 @@ mp_drawing_styles = mp.solutions.drawing_styles
 hands = mp_hands.Hands(
     static_image_mode=True,
     max_num_hands=2,
-    min_detection_confidence=0.5, min_tracking_confidence=0.5, model_complexity=0)
+    min_detection_confidence=0.5, min_tracking_confidence=0.8, model_complexity=1)
 
 frame_img = None
 

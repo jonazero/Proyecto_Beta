@@ -24,6 +24,8 @@ var pc = null;
 // data channel
 var dc = null;
 
+var esc = false;
+var indice = 0;
 function gotDevices(deviceInfos) {
   // Handles being called several times to update labels. Preserve values.
   const values = selectors.map(select => select.value);
@@ -133,8 +135,6 @@ function start() {
     if (evt.data) {
       playSound('sound-key');
       initTyping(evt.data);
-      evt.data = "";
-      inpField.focus();
     };
   };
   const videoSource = videoSelect.value;
@@ -215,7 +215,8 @@ function loadParagraph() {
 }
 
 function sendNormalChar(event) {
-  dc.send(event.key);
+  inpField.focus();
+  dc.send(event.key)
 };
 
 function playSound(id) {
@@ -224,7 +225,6 @@ function playSound(id) {
   if (audioElement.paused) {
     audioElement.play();
   }
-
 };
 
 function resetAll() {
