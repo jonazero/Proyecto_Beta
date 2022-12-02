@@ -35,7 +35,6 @@ hands = mp_hands.Hands(
     max_num_hands=2,
     min_detection_confidence=0.5, min_tracking_confidence=0.8, model_complexity=1)
 
-frame_img = None
 
 dis = json2dic('./src/key_distribution.json')
 
@@ -66,11 +65,9 @@ class VideoTransformTrack(MediaStreamTrack):
         self.transform = transform
 
     async def recv(self):
-        global frame_img
         frame = await self.track.recv()
         img = frame.to_ndarray(format="bgr24")
         img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
-        frame_img = img
         if coords and first == False:
             for data in coords:
                 img = cv2.circle(
@@ -81,12 +78,17 @@ class VideoTransformTrack(MediaStreamTrack):
         nf.time_base = frame.time_base
         return nf
 
+    async def recv2(self):
+        await asyncio.sleep(0.15)
+        frame = await self.track.recv()
+        return frame
 
-async def set_keys(data):
+
+async def set_keys(data, frame):
     global coords
     global first
-    time.sleep(0.15)
-    frame = frame_img
+    frame = frame.to_ndarray(format="bgr24")
+    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
     frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
     results = hands.process(frame)
     if data == "Escape":
@@ -112,10 +114,9 @@ async def set_keys(data):
         print("Enfoque la camara")
 
 
-async def test_keys(data, channel):
-    time.sleep(0.15)
-    frame = frame_img
-    # Redimensiona la imagen para que las coordenadas no cambien
+async def test_keys(data, channel, frame):
+    frame = frame.to_ndarray(format="bgr24")
+    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
     frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
     results = hands.process(frame)
     # cv2.imwrite('c1.png', frame)
@@ -172,17 +173,17 @@ async def camara(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
 
-def between_callback(data, channel):
+def between_callback(data, channel, frame):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(test_keys(data, channel))
+    loop.run_until_complete(test_keys(data, channel, frame))
     loop.close()
 
 
-def between_callback2(data):
+def between_callback2(data, frame):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(set_keys(data))
+    loop.run_until_complete(set_keys(data, frame))
     loop.close()
 
 
@@ -207,15 +208,19 @@ async def offer(params: Offer):
     pcs.add(pc)
     recorder = MediaBlackhole()
     relay = MediaRelay()
+    obj = None
 
     @ pc.on("datachannel")
     def on_datachannel(channel):
         @ channel.on("message")
         async def on_message(message):
+            frame = await obj.recv2()
             if first == True:
-                executor.submit(between_callback2, message)
+                #executor.submit(between_callback2, message, frame)
+                await set_keys(message, frame)
             else:
-                executor.submit(between_callback, message, channel)
+                #executor.submit(between_callback, message, channel, frame)
+                await test_keys(message, channel, frame)
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():
@@ -226,11 +231,11 @@ async def offer(params: Offer):
 
     @ pc.on("track")
     def on_track(track):
+        nonlocal obj
         if track.kind == "video":
-            pc.addTrack(
-                VideoTransformTrack(relay.subscribe(
-                    track), transform=params.video_transform)
-            )
+            obj = VideoTransformTrack(relay.subscribe(
+                track), transform=params.video_transform)
+            pc.addTrack(obj)
 
         @ track.on("ended")
         async def on_ended():
