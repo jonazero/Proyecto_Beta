@@ -33,7 +33,7 @@ mp_drawing_styles = mp.solutions.drawing_styles
 hands = mp_hands.Hands(
     static_image_mode=True,
     max_num_hands=2,
-    min_detection_confidence=0.5, min_tracking_confidence=0.8, model_complexity=1)
+    min_detection_confidence=0.5, min_tracking_confidence=0.7, model_complexity=1)
 
 
 dis = json2dic('./src/key_distribution.json')
@@ -52,12 +52,10 @@ executor = ThreadPoolExecutor(max_workers=8)
 
 dim = (960, 720)
 
-coords = {}
-first = True
-
 
 class VideoTransformTrack(MediaStreamTrack):
     kind = "video"
+    coords = {}
 
     def __init__(self, track, transform) -> None:
         super().__init__()
@@ -68,20 +66,69 @@ class VideoTransformTrack(MediaStreamTrack):
         frame = await self.track.recv()
         img = frame.to_ndarray(format="bgr24")
         img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
-        if coords and first == False:
-            for data in coords:
+        if self.coords and self.transform == True:
+            for data in self.coords:
                 img = cv2.circle(
-                    img, (int(coords[data][0] * frame.width), int(coords[data][1] * frame.height)), 2, (255, 0, 0), 2)
+                    img, (int(self.coords[data][0] * frame.width), int(self.coords[data][1] * frame.height)), 2, (255, 0, 0), 2)
         nf = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         nf = VideoFrame.from_ndarray(nf, format="bgr24")
         nf.pts = frame.pts
         nf.time_base = frame.time_base
         return nf
 
-    async def recv2(self):
+    async def get_delayed_frame(self):
         await asyncio.sleep(0.15)
         frame = await self.track.recv()
         return frame
+
+    async def set_keys(self, data):
+        frame = await self.get_delayed_frame()
+        frame = frame.to_ndarray(format="bgr24")
+        frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+        results = hands.process(frame)
+        if data == "Escape":
+            for data in self.coords:
+                self.coords[data] = np.divide(
+                    self.coords[data], self.coords[data][3]).tolist()
+            dic2json("./src/coords.json", self.coords)
+            return
+        if results.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                mano = results.multi_handedness[idx].classification[0].label
+                mp_drawing.draw_landmarks(
+                    frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                if data in dis[mano]:
+                    if data in self.coords:
+                        self.coords[data] = np.add(self.coords[data], [hand_landmarks.landmark[dis[mano][data]].x,
+                                                                       hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1]).tolist()
+                    else:
+                        self.coords[data] = ([hand_landmarks.landmark[dis[mano][data]].x,
+                                              hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1])
+
+        else:
+            print("Enfoque la camara")
+
+    async def test_keys(self, data):
+        frame = await self.get_delayed_frame()
+        frame = frame.to_ndarray(format="bgr24")
+        frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+        results = hands.process(frame)
+        # cv2.imwrite('c1.png', frame)
+        if data == " ":
+            return True
+        elif results.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                mano = results.multi_handedness[idx].classification[0].label
+                if data in dis[mano]:
+                    if abs(hand_landmarks.landmark[dis[mano][data]].x - self.coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - self.coords[data][1]) < 0.025:
+                        return True
+                    else:
+                        cv2.imwrite('c1.png', frame)
+                        return False
+        else:
+            print("error")
 
 
 async def set_keys(data, frame):
@@ -136,20 +183,6 @@ async def test_keys(data, channel, frame):
             print("error")
 
 
-"""
-def create_local_tracks(play_from=None):
-    if play_from:
-        player = MediaPlayer(play_from)
-        return player.video
-    else:
-        options = {"framerate": "60", "video_size": "1980x1080"}
-        webcam = MediaPlayer("video=OBS-Camera",
-                             format="dshow", options=options)
-        relay = MediaRelay()
-        return None, relay.subscribe(webcam.video)
-"""
-
-
 @ app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("inicio.html", {"request": request})
@@ -173,34 +206,6 @@ async def camara(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
 
-def between_callback(data, channel, frame):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(test_keys(data, channel, frame))
-    loop.close()
-
-
-def between_callback2(data, frame):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(set_keys(data, frame))
-    loop.close()
-
-
-'''
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        threads.append(ThreadTestCoords(data, websocket))
-        threads.pop().start()
-        # _thread = threading.Thread(target=between_callback, args=(data, websocket))
-        # _thread.start()
-
-'''
-
-
 @ app.post("/offer_cv")
 async def offer(params: Offer):
     offer = RTCSessionDescription(sdp=params.sdp, type=params.type)
@@ -208,19 +213,21 @@ async def offer(params: Offer):
     pcs.add(pc)
     recorder = MediaBlackhole()
     relay = MediaRelay()
-    obj = None
+    stream = None
+    esc = False
 
     @ pc.on("datachannel")
     def on_datachannel(channel):
         @ channel.on("message")
         async def on_message(message):
-            frame = await obj.recv2()
-            if first == True:
-                #executor.submit(between_callback2, message, frame)
-                await set_keys(message, frame)
-            else:
-                #executor.submit(between_callback, message, channel, frame)
-                await test_keys(message, channel, frame)
+            nonlocal esc
+            if esc == False:
+                if message == "Escape":
+                    esc = True
+                    stream.transform = True
+                await stream.set_keys(message)
+            elif await stream.test_keys(message) == True:
+                channel.send(message)
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():
@@ -231,11 +238,11 @@ async def offer(params: Offer):
 
     @ pc.on("track")
     def on_track(track):
-        nonlocal obj
+        nonlocal stream
         if track.kind == "video":
-            obj = VideoTransformTrack(relay.subscribe(
+            stream = VideoTransformTrack(relay.subscribe(
                 track), transform=params.video_transform)
-            pc.addTrack(obj)
+            pc.addTrack(stream)
 
         @ track.on("ended")
         async def on_ended():
