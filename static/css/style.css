@@ -26,6 +26,11 @@ video {
   border-radius: 30px;
 }
 
+.hands {
+  display: flex;
+  justify-content: center;
+}
+
 .navbar {
   font-size: 20px;
   background-color: rgba(0, 0, 0, 0.349);

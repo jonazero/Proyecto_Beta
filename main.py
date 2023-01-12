@@ -125,7 +125,6 @@ class VideoTransformTrack(MediaStreamTrack):
                     if abs(hand_landmarks.landmark[dis[mano][data]].x - self.coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - self.coords[data][1]) < 0.025:
                         return True
                     else:
-                        cv2.imwrite('c1.png', frame)
                         return False
         else:
             print("error")

@@ -10,6 +10,7 @@ const typingText = document.querySelector(".typing-text p"),
   wpmTag = document.querySelector(".wpm span"),
   cpmTag = document.querySelector(".cpm span");
 
+
 let timer,
   maxTime = 600,
   timeLeft = maxTime,
@@ -26,6 +27,7 @@ var dc = null;
 
 var esc = false;
 var indice = 0;
+
 function gotDevices(deviceInfos) {
   // Handles being called several times to update labels. Preserve values.
   const values = selectors.map(select => select.value);
@@ -133,6 +135,8 @@ function start() {
   };
   dc.onmessage = function (evt) {
     if (evt.data) {
+      cf = typingText.querySelectorAll("span")[charIndex + 1].innerText;
+      showFinger(cf);
       playSound('sound-key');
       initTyping(evt.data);
     };
@@ -212,6 +216,34 @@ function loadParagraph() {
   typingText.querySelectorAll("span")[0].classList.add("active");
   document.addEventListener("keydown", sendNormalChar);
   typingText.addEventListener("click", () => inpField.focus());
+  const cf = typingText.querySelectorAll("span")[charIndex].innerText;
+  showFinger(cf);
+
+}
+
+function showFinger(cf) {
+  document.getElementById("ii").src = "../img/manos/1.png";
+  document.getElementById("id").src = "../img/manos/2.png";
+  if (cf == ' ') {
+    document.getElementById("ii").src = "../img/manos/1p.png";
+    document.getElementById("id").src = "../img/manos/2p.png";
+  } else if (cf == '1' || cf == 'q' || cf == 'z' || cf == 'a') {
+    document.getElementById("ii").src = "../img/manos/1m.png";
+  } else if (cf == '2' || cf == 'x' || cf == 'w' || cf == 's') {
+    document.getElementById("ii").src = "../img/manos/1a.png";
+  } else if (cf == '3' || cf == 'c' || cf == 'd' || cf == 'e') {
+    document.getElementById("ii").src = "../img/manos/1med.png";
+  } else if (cf == '5' || cf == '4' || cf == 'v' || cf == 'b' || cf == 'g' || cf == 't' || cf == 'r' || cf == 'f') {
+    document.getElementById("ii").src = "../img/manos/1i.png";
+  } else if (cf == '0' || cf == 'ñ' || cf == 'p') {
+    document.getElementById("id").src = "../img/manos/2m.png";
+  } else if (cf == '9' || cf == '.' || cf == 'l' || cf == 'o') {
+    document.getElementById("id").src = "../img/manos/2a.png";
+  } else if (cf == '8' || cf == ',' || cf == 'k' || cf == 'i') {
+    document.getElementById("id").src = "../img/manos/2med.png";
+  } else {
+    document.getElementById("id").src = "../img/manos/2i.png";
+  }
 }
 
 function sendNormalChar(event) {
