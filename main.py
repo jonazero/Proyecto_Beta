@@ -5,6 +5,7 @@ import time
 import threading
 import os
 import numpy as np
+import json
 from av import VideoFrame
 from fastapi import FastAPI
 from fastapi import FastAPI, WebSocket
@@ -31,9 +32,9 @@ mp_hands = mp.solutions.hands
 mp_drawing_styles = mp.solutions.drawing_styles
 
 hands = mp_hands.Hands(
-    static_image_mode=True,
+    static_image_mode=False,
     max_num_hands=2,
-    min_detection_confidence=0.5, min_tracking_confidence=0.7, model_complexity=1)
+    min_detection_confidence=0.5, min_tracking_confidence=0.5, model_complexity=1)
 
 
 dis = json2dic('./src/key_distribution.json')
@@ -107,7 +108,8 @@ class VideoTransformTrack(MediaStreamTrack):
                                               hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1])
 
         else:
-            print("Enfoque la camara")
+            return {"error": True, "key": data, "first": True, "error_name": "Error de identificacion de manos"}
+        return {"error": False, "key": data, "first": True, "error_name": None}
 
     async def test_keys(self, data):
         frame = await self.get_delayed_frame()
@@ -117,17 +119,17 @@ class VideoTransformTrack(MediaStreamTrack):
         results = hands.process(frame)
         # cv2.imwrite('c1.png', frame)
         if data == " ":
-            return True
+            return {"key": data, "first": False, "error_name": None, "error": False}
         elif results.multi_hand_landmarks:
             for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
                 mano = results.multi_handedness[idx].classification[0].label
                 if data in dis[mano]:
                     if abs(hand_landmarks.landmark[dis[mano][data]].x - self.coords[data][0]) < 0.025 and abs(hand_landmarks.landmark[dis[mano][data]].y - self.coords[data][1]) < 0.025:
-                        return True
+                        return {"key": data, "first": False, "error_name": None, "error": False}
                     else:
-                        return False
+                        return {"error": True, "key": data, "first": False, "error_name": "No se identifico el dedo"}
         else:
-            print("error")
+            return {"error": True}
 
 
 async def set_keys(data, frame):
@@ -224,9 +226,13 @@ async def offer(params: Offer):
                 if message == "Escape":
                     esc = True
                     stream.transform = True
-                await stream.set_keys(message)
-            elif await stream.test_keys(message) == True:
-                channel.send(message)
+                r = await stream.set_keys(message)
+                if r != None:
+                    channel.send(json.dumps(r))
+            else:
+                reci = await stream.test_keys(message)
+                if reci["error"] == False:
+                    channel.send(json.dumps(reci))
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():

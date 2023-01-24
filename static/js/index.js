@@ -28,6 +28,7 @@ var dc = null;
 var esc = false;
 var indice = 0;
 
+
 function gotDevices(deviceInfos) {
   // Handles being called several times to update labels. Preserve values.
   const values = selectors.map(select => select.value);
@@ -124,8 +125,8 @@ function negotiate() {
 }
 
 function start() {
+  let received;
   pc = createPeerConnection();
-
   dc = pc.createDataChannel('chat');
   dc.onclose = function () {
     console.log("data channel closed");
@@ -135,11 +136,23 @@ function start() {
   };
   dc.onmessage = function (evt) {
     if (evt.data) {
-      cf = typingText.querySelectorAll("span")[charIndex + 1].innerText;
-      showFinger(cf);
-      playSound('sound-key');
-      initTyping(evt.data);
-    };
+      received = JSON.parse(evt.data)
+      if (received.error == true && received.first == true) {
+        alert(received.error_name);
+      } else if (received.error == false && received.first == true) {
+        initTyping(received.key);
+      } else {
+        document.querySelectorAll('.result-details').forEach(function (el) {
+          el.style.display = "flex";
+        });
+        document.querySelectorAll('.content').forEach(function (el) {
+          el.style.display = "flex";
+        });
+        cf = typingText.querySelectorAll("span")[charIndex + 1].innerText;
+        showFinger(cf);
+        initTyping(received.key);
+      }
+    }
   };
   const videoSource = videoSelect.value;
   const constraints = {
@@ -216,9 +229,6 @@ function loadParagraph() {
   typingText.querySelectorAll("span")[0].classList.add("active");
   document.addEventListener("keydown", sendNormalChar);
   typingText.addEventListener("click", () => inpField.focus());
-  const cf = typingText.querySelectorAll("span")[charIndex].innerText;
-  showFinger(cf);
-
 }
 
 function showFinger(cf) {
@@ -286,6 +296,7 @@ function initTyping(kp) {
     } else {
       if (characters[charIndex].innerText == kp) {
         characters[charIndex].classList.add("correct");
+        playSound('sound-key');
       } else {
         mistakes++;
         characters[charIndex].classList.add("incorrect");
@@ -302,9 +313,10 @@ function initTyping(kp) {
     wpmTag.innerText = wpm;
     mistakeTag.innerText = mistakes;
     cpmTag.innerText = charIndex - mistakes;
+    console.log(charIndex, characters.length);
   } else {
-    clearInterval(timer);
-    inpField.value = "";
+    dc.send("Escape")
+    resetGame();
   }
 }
 
