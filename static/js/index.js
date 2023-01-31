@@ -219,15 +219,14 @@ navbarToggle.addEventListener('click', function () {
   }
 });
 
-function loadParagraph() {
-  const ranIndex = Math.floor(Math.random() * paragraphs.length);
+function loadParagraph(par_index) {
   typingText.innerHTML = "";
-  paragraphs[ranIndex].split("").forEach(char => {
+  paragraphs[par_index].split("").forEach(char => {
     let span = `<span>${char}</span>`
     typingText.innerHTML += span;
   });
   typingText.querySelectorAll("span")[0].classList.add("active");
-  document.addEventListener("keydown", sendNormalChar);
+  document.addEventListener("keypress", sendNormalChar);
   typingText.addEventListener("click", () => inpField.focus());
 }
 
@@ -258,7 +257,7 @@ function showFinger(cf) {
 
 function sendNormalChar(event) {
   inpField.focus();
-  dc.send(event.key)
+  dc.send(event.key);
 };
 
 function playSound(id) {
@@ -315,7 +314,7 @@ function initTyping(kp) {
     cpmTag.innerText = charIndex - mistakes;
     console.log(charIndex, characters.length);
   } else {
-    dc.send("Escape")
+    dc.send("benchmark")
     resetGame();
   }
 }
@@ -332,7 +331,7 @@ function initTimer() {
 }
 
 function resetGame() {
-  loadParagraph();
+  loadParagraph(1);
   clearInterval(timer);
   timeLeft = maxTime;
   charIndex = mistakes = isTyping = 0;
@@ -343,5 +342,5 @@ function resetGame() {
   cpmTag.innerText = 0;
 }
 
-loadParagraph();
+loadParagraph(0);
 tryAgainBtn.addEventListener("click", resetGame);
