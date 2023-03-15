@@ -1,10 +1,15 @@
 from fastapi import APIRouter
 from models.user import User
-from database.user import create_user, get_user, get_users, delete_user, update_user
-
-
+from database.user import create_user, get_by_id, get_by_email, get_users, delete_user, update_user
+from starlette.requests import Request
+from fastapi_sso.sso.google import GoogleSSO
+from os import getenv
 routes_user = APIRouter()
 
+GOOGLE_CLIENT_ID = getenv("GOOGLE_CLIENT_ID")
+GOOGLE_SECRET = getenv("GOOGLE_SECRET")
+SSO = GoogleSSO(client_id=GOOGLE_CLIENT_ID, client_secret=GOOGLE_SECRET,
+                redirect_uri="http://localhost:8000/user/get/{id}", allow_insecure_http=True, use_state=False)
 # CREATE USER
 
 
@@ -15,9 +20,15 @@ def create(user: User):
 # GET USER BY ID
 
 
-@routes_user.get("/get/{id}")
-def get_by_id(id: str):
-    return get_user(id)
+@routes_user.get("/login/{id}")
+async def get_by_id(request: Request):
+    user = await SSO.verify_and_process(request)
+    try:
+        return get_by_id(user.id)
+    except:
+        return "No hubo"
+
+
 
 # GET ALL USERS
 

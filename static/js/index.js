@@ -25,10 +25,6 @@ var pc = null;
 // data channel
 var dc = null;
 
-var esc = false;
-var indice = 0;
-
-
 function gotDevices(deviceInfos) {
   // Handles being called several times to update labels. Preserve values.
   const values = selectors.map(select => select.value);
@@ -124,7 +120,12 @@ function negotiate() {
     });
 }
 
-function start() {
+async function start() {
+  var access_token = await getAccessToken(window.location.search);
+  if (access_token) {
+    var userinfo =  getUserInfo(access_token);
+  }
+
   let received;
   pc = createPeerConnection();
   dc = pc.createDataChannel('chat');
@@ -344,3 +345,70 @@ function resetGame() {
 
 loadParagraph(0);
 tryAgainBtn.addEventListener("click", resetGame);
+
+
+
+
+async function getAccessToken(query_string) {
+  const url_params = new URLSearchParams(query_string);
+  const code = url_params.get('code');
+  if (code == null) {
+    return
+  }
+  const scope = url_params.get('scope');
+  try {
+    const response = await fetch("http://localhost:8000/get-access-token?" + new URLSearchParams({
+      code: code,
+      scope: scope,
+      authuser: 0,
+      prompt: "consent"
+    }), {
+      method: "GET",
+      headers: { "Content-type": "application/json;charset=UTF-8" }
+    });
+    const r = await response.json();
+    return r["access_token"];
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+async function getUserInfo(access_token) {
+  fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    method: "GET",
+    headers: {
+      "Content-type": "application/json;charset=UTF-8",
+      "Authorization": `Bearer ${access_token}`
+    }
+  })
+    .then(response => response.json())
+    .then(r => console.log(r))
+    .catch(err => console - loadParagraph(err));
+}
+
+function createOauthUser() {
+  fetch("/get-oauth-user", {
+    method: "GET",
+    headers: { "Content-type": "application/json;charset=UTF-8" }
+  })
+    .then(response => response.json())
+    .then(res1 => {
+      fetch(`/get-user-id/${res1.id}`, {
+        headers: { "Content-type": "application/json;charset=UTF-8" },
+        method: "GET"
+      })
+        .then(response2 => response2.json())
+        .then(res2 => {
+          if (res2 == "") {
+            fetch("/create-user", {
+              body: JSON.stringify({ id: res1.id, username: res1.first_name, email: res1.email, pwd: "google", matriz_errores_promedio: {}, matriz_tiempo_teclas: {}, wpm: 0, age: 0 }),
+              headers: { "Content-Type": "application/json" },
+              method: "POST"
+            })
+          } else {
+            alert("Ya hay un usuario registrado con este correo");
+            location.assign("/signup");
+          }
+        })
+    });
+}

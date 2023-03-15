@@ -14,10 +14,21 @@ def create_user(user: dict):
         return JSONResponse(content=e.response["Error"], status_code=500)
 
 
-def get_user(id: str):
+def get_by_id(id: str):
     try:
         response = table.query(
             KeyConditionExpression=Key("id").eq(id)
+        )
+        return response["Items"]
+    except ClientError as e:
+        return JSONResponse(content=e.response["Error"], status_code=500)
+
+
+def get_by_email(email: str):
+    try:
+        response = table.query(
+            IndexName='email-index',
+            KeyConditionExpression=Key('email').eq(email)
         )
         return response["Items"]
     except ClientError as e:
