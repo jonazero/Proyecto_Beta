@@ -1,12 +1,16 @@
 from datetime import datetime, timedelta
 from typing import Union
-
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.staticfiles import StaticFiles
+from fastapi import Depends, FastAPI, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
+from starlette.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 
+
+templates = Jinja2Templates(directory="templates")
 # to get a string like this run:
 # openssl rand -hex 32
 SECRET_KEY = "8b475c6ea74ab945d24b9de5257da00498f36b551b5661963898856e4334a70b"
@@ -50,9 +54,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/img", StaticFiles(directory="img"), name="img")
+app.mount("/audio", StaticFiles(directory="audio"), name="audio")
+templates = Jinja2Templates(directory="templates")
 
 def verify_password(plain_password, hashed_password):
+    print("verificacion: ", pwd_context.verify(
+        plain_password, hashed_password))
     return pwd_context.verify(plain_password, hashed_password)
 
 
@@ -68,6 +77,7 @@ def get_user(db, username: str):
 
 def authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
+    print("este es el tipo: ", type(user))
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -116,6 +126,7 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(
         fake_users_db, form_data.username, form_data.password)
+    print("este es user: ", user)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -130,8 +141,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 @app.get("/users/me/", response_model=User)
-async def read_users_me(current_user: User = Depends(get_current_active_user)):
-    return current_user
+async def read_users_me(request: Request, current_user: User = Depends(get_current_active_user)):
+    return RedirectResponse("/docs", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
 @app.get("/users/me/items/")

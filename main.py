@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from routes.routes import routes
-from routes.user import routes_user
 from fastapi.middleware.cors import CORSMiddleware
+from auth import auth_app
 app = FastAPI()
 
 origins = [
@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+app.mount("/auth", auth_app)
 app.include_router(routes)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/img", StaticFiles(directory="img"), name="img")

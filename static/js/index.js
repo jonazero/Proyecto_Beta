@@ -121,11 +121,6 @@ function negotiate() {
 }
 
 async function start() {
-  var access_token = await getAccessToken(window.location.search);
-  if (access_token) {
-    var userinfo =  getUserInfo(access_token);
-  }
-
   let received;
   pc = createPeerConnection();
   dc = pc.createDataChannel('chat');

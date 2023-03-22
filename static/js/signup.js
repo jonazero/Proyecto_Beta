@@ -13,97 +13,103 @@ signInButton.addEventListener('click', () => {
 });
 
 
-async function start() {
+function send() {
     var url = window.location.search;
-    if (url.includes("code") && url.includes("prompt=consent") && url.includes("scope")) {
-        const access_token = await getAccessToken(url);
-        const user_info = await getUserInfo(access_token);
-        console.log(user_info);
-    }
-}
-
-async function getAccessToken(query_string) {
-    const url_params = new URLSearchParams(query_string);
-    const code = url_params.get('code');
-    const scope = url_params.get('scope');
-    try {
-        const response = await fetch("http://localhost:8000/get-access-token?" + new URLSearchParams({
-            code: code,
-            scope: scope,
-            authuser: 0,
-            prompt: "consent"
-        }), {
-            method: "GET",
-            headers: { "Content-type": "application/json;charset=UTF-8" }
-        });
-        const r = await response.json();
-        return r["access_token"];
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-async function getUserInfo(access_token) {
-    fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        method: "GET",
-        headers: {
-            "Content-type": "application/json;charset=UTF-8",
-            "Authorization": `Bearer ${access_token}`
+    const urlParams = new URLSearchParams(url);
+    if (urlParams.has("code") && urlParams.has("scope")) {
+        var req = new XMLHttpRequest();
+        req.onreadystatechange = function () {
+            if (req.readyState === 4) {
+                if (req.response["result"] === true) {
+                    window.localStorage.setItem('jwt', req.response["access_token"]);
+                    window.localStorage.setItem('refresh', req.response["refresh_token"]);
+                    window.location = "/camara";
+                }
+            }
         }
-    })
-        .then(response => response.json())
-        .then(r => console.log(r))
-        .catch(err => console - loadParagraph(err));
+        req.withCredentials = true;
+        req.responseType = 'json';
+        req.open("get", "/auth/token?" + url.substring(1), true);
+        req.send("");
+    }
 }
+
+function probar() {
+    console.log(window.localStorage.getItem("jwt"));
+    fetch("/camara", {
+        headers: { "Authorization": "Bearer " + window.localStorage.getItem("jwt") },
+    })
+        .then(res => res.json())
+        .then(r => {
+            console.log(r);
+            if (r["result"] === true) {
+                window.localStorage.removeItem("jwt");
+            }
+        })
+        .catch(err => console.log(err));
+}
+
 
 form_signup.addEventListener('submit', function (e) {
     e.preventDefault();
     const user = new FormData(form_signup);
-
-    fetch("/get-user-email", {
-        body: JSON.stringify(user.get("email")),
+    if (user.get('email') == '' || user.get('pwd') == '' || user.get('name') == ''){
+        alert("El nombre, email o contraseña no pueden estar vacios");
+        return
+    }
+    fetch("/auth/create-user", {
+        body: JSON.stringify({ username: user.get("name"), email: user.get("email"), pwd: user.get("pwd"), matriz_errores_promedio: {}, matriz_tiempo_teclas: {}, wpm: 0, age: 0 }), 
         headers: { "Content-type": "application/json;charset=UTF-8" },
         method: "POST"
     })
         .then(res => res.json())
         .then(r => {
-            if (r == "") {
-                fetch("/create-user", {
-                    body: JSON.stringify({ username: user.get("name"), email: user.get("email"), pwd: user.get("pwd"), matriz_errores_promedio: {}, matriz_tiempo_teclas: {}, wpm: 0, age: 0 }),
-                    headers: { "Content-Type": "application/json" },
+            if (r) {
+                fetch("/auth/token2", {
+                    body: JSON.stringify({ email: user.get("email"), pwd: user.get("pwd") }),
+                    headers: { "Content-type": "application/json;charset=UTF-8" },
                     method: "POST"
                 })
                     .then(response => response.json())
-                    .then(json => console.log(json))
+                    .then(r => {
+                        if (r['result'] == true) {
+                            window.localStorage.setItem('jwt', r["access_token"]);
+                            window.location = "/camara";
+                        } else {
+                            alert("Usuario o contraseña incorrectos");
+                        }
+                    })
                     .catch(err => console.log(err));
-            } else {
-                alert("Ya hay un usuario registrado con este correo");
             }
-        })
-        .then(err => console.log(err))
+        }).catch(err => console.log(err));
 
 });
 
 form_login.addEventListener('submit', function (e) {
     e.preventDefault();
     const user = new FormData(form_login);
-    alert(user.get("email"));
-    fetch("/get-user-email", {
-        body: JSON.stringify(user.get("email")),
+    if (user.get('email') == '' || user.get('pwd') == '') {
+        alert("El email o contraseña no pueden estar vacios");
+        return
+    }
+    fetch("/auth/token2", {
+        body: JSON.stringify({ email: user.get("email"), pwd: user.get("pwd") }),
         headers: { "Content-type": "application/json;charset=UTF-8" },
         method: "POST"
     })
         .then(response => response.json())
         .then(r => {
-            if (r[0].pwd != "google" && r[0].pwd == user.get("pwd")) {
-                location.assign("/camara");
+            if (r['result'] == true) {
+                window.localStorage.setItem('jwt', r["access_token"]);
+                window.location = "/camara";
             } else {
-                alert("El usuario no existe")
+                alert("Usuario o contraseña incorrectos");
             }
         })
-        .catch(err => console.log(err))
+        .catch(err => console.log(err));
 
 })
+
 
 
 
