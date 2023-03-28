@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
@@ -17,15 +17,6 @@ routes = APIRouter()
 templates = Jinja2Templates(directory="templates")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_SECRET = os.getenv("GOOGLE_SECRET")
-FACEBOOK_CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID")
-FACEBOOK_SECRET = os.getenv("FACEBOOK_SECRET")
-MICROSOFT_CLIENT_ID = os.getenv("MICROSOFT_CLIENT_ID")
-MICROSOFT_SECRET = os.getenv("MICROSOFT_SECRET")
-MICROSOFT_TENANT = os.getenv("MICROSOFT_TENANT")
-
-
-
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 
 @routes.get("/", response_class=HTMLResponse)
@@ -95,6 +86,8 @@ async def offer(params: Offer):
     await pc.setRemoteDescription(offer)
     await pc.setLocalDescription(answer)
     return {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
+
+
 pcs = set()
 args = ''
 
@@ -107,17 +100,12 @@ async def on_shutdown():
     pcs.clear()
 
 
-
-
 # GET USER BY ID
 
 
 @routes.get("/google/login")
 async def google_login(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
-
-
-
 
 
 @routes.get("/get-user-id/{id}")

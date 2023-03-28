@@ -7,7 +7,7 @@ from fastapi import Body, FastAPI, Request, HTTPException, status
 from starlette.config import Config
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
-from database.user import create_user, get_by_id, get_by_email, get_users, delete_user, update_user
+from database.user import create_user, get_by_email
 from typing import Union
 from jsonwt import create_refresh_token
 from jsonwt import create_token
@@ -15,7 +15,7 @@ from jsonwt import CREDENTIALS_EXCEPTION
 from jsonwt import decode_token
 from jsonwt import valid_email_from_db
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+from jose import jwt
 from models.user import User
 # Create the auth app
 auth_app = FastAPI()
@@ -90,7 +90,7 @@ async def login(request: Request):
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
-@auth_app.route('/token')
+@auth_app.route('/google-token')
 async def auth(request: Request):
     try:
         access_token = await oauth.google.authorize_access_token(request)
@@ -106,13 +106,13 @@ async def auth(request: Request):
     raise CREDENTIALS_EXCEPTION
 
 
-@auth_app.post("/token2")
+@auth_app.post("/token")
 async def login_for_access_token(email: str = Body(), pwd: str = Body()):
     user = authenticate_user(email, pwd)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Email o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -127,8 +127,12 @@ async def login_for_access_token(email: str = Body(), pwd: str = Body()):
 
 @auth_app.post("/create-user")
 def create(user: User):
-    user.pwd =  get_password_hash(user.pwd)
-    return (create_user(user.dict()))
+    if not get_by_email(user.email):
+        user.pwd =  get_password_hash(user.pwd)
+        return (create_user(user.dict()))
+    else:
+        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Ya hay un usuario registrado con ese correo")
+
 
 
 @auth_app.post('/refresh')
