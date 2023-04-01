@@ -21,8 +21,8 @@ function send() {
         req.onreadystatechange = function () {
             if (req.readyState === 4) {
                 if (req.response["result"] === true) {
-                    window.localStorage.setItem('jwt', req.response["access_token"]);
-                    window.localStorage.setItem('refresh', req.response["refresh_token"]);
+                    window.sessionStorage.setItem('jwt', req.response["access_token"]);
+                    window.sessionStorage.setItem('refresh', req.response["refresh_token"]);
                     window.location = "/camara";
                 }
             }
@@ -33,22 +33,6 @@ function send() {
         req.send("");
     }
 }
-
-function probar() {
-    console.log(window.localStorage.getItem("jwt"));
-    fetch("/camara", {
-        headers: { "Authorization": "Bearer " + window.localStorage.getItem("jwt") },
-    })
-        .then(res => res.json())
-        .then(r => {
-            console.log(r);
-            if (r["result"] === true) {
-                window.localStorage.removeItem("jwt");
-            }
-        })
-        .catch(err => console.log(err));
-}
-
 
 form_signup.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -72,7 +56,7 @@ form_signup.addEventListener('submit', function (e) {
                 .then(handleErrors)
                 .then(r => {
                     if (r['result'] == true) {
-                        window.localStorage.setItem('jwt', r["access_token"]);
+                        window.sessionStorage.setItem('jwt', r["access_token"]);
                         window.location = "/camara";
                     }
                 })
@@ -95,7 +79,7 @@ form_login.addEventListener('submit', function (e) {
         .then(handleErrors)
         .then(r => {
             if (r['result'] == true) {
-                window.localStorage.setItem('jwt', r["access_token"]);
+                window.sessionStorage.setItem('jwt', r["access_token"]);
                 window.location = "/camara";
             }
         })
@@ -112,8 +96,4 @@ async function handleErrors(response) {
     }
     return jsonresponse;
 }
-
-
-
-
 

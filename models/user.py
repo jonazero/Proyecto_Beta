@@ -21,3 +21,9 @@ class User(BaseModel):
     wpm: int
     age: int
     created_at: str = Field(default_factory=generate_date)
+
+
+class UserParamsModel(BaseModel):
+    matriz_errores_promedio: dict
+    matriz_tiempo_teclas: dict
+    wpm: int

@@ -1,14 +1,13 @@
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from src.schemas import Offer
 from aiortc.contrib.media import MediaRelay, MediaBlackhole
-from models.user import User
-from database.user import create_user, get_by_id, get_by_email, get_users, delete_user, update_user
-from jsonwt import get_current_user_email
 from camera import VideoTransformTrack
+from models.user import UserParamsModel
+from jsonwt import get_current_user_params
 import json
 import asyncio
 import os
@@ -17,6 +16,7 @@ routes = APIRouter()
 templates = Jinja2Templates(directory="templates")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_SECRET = os.getenv("GOOGLE_SECRET")
+pcs = set()
 
 
 @routes.get("/", response_class=HTMLResponse)
@@ -32,6 +32,11 @@ async def signup(request: Request):
 @routes.get("/camara")
 async def camara(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+@routes.get("/user/params")
+async def UserParams(params: UserParamsModel = Depends(get_current_user_params)):
+    return params
+
 
 
 @routes.post("/offer_cv")
@@ -88,10 +93,6 @@ async def offer(params: Offer):
     return {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
 
 
-pcs = set()
-args = ''
-
-
 @ routes.on_event("shutdown")
 async def on_shutdown():
     # Close peer connections
@@ -99,42 +100,3 @@ async def on_shutdown():
     await asyncio.gather(*coros)
     pcs.clear()
 
-
-# GET USER BY ID
-
-
-@routes.get("/google/login")
-async def google_login(request: Request):
-    return templates.TemplateResponse("signup.html", {"request": request})
-
-
-@routes.get("/get-user-id/{id}")
-async def getuser(id: str):
-    return get_by_id(id)
-
-
-@routes.post("/get-user-email")
-async def getUserEmail(email: str = Body()):
-    return get_by_email(email)
-
-# GET ALL USERS
-
-
-@routes.get("/all")
-def get_all():
-    return get_users()
-
-
-# DELETE USER
-
-
-@routes.post("/delete")
-def create(user: User):
-    return delete_user(user.dict())
-
-# UPDATE USER
-
-
-@routes.post("/update")
-def create(user: User):
-    return update_user(user.dict())
