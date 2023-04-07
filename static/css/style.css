@@ -232,7 +232,7 @@ video {
 }
 
 .content .result-details {
-  display: none;
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   width: calc(100% - 140px);

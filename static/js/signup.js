@@ -23,6 +23,7 @@ function send() {
                 if (req.response["result"] === true) {
                     window.sessionStorage.setItem('jwt', req.response["access_token"]);
                     window.sessionStorage.setItem('refresh', req.response["refresh_token"]);
+                    window.sessionStorage.setItem('first', 'true');
                     window.location = "/camara";
                 }
             }
@@ -57,6 +58,7 @@ form_signup.addEventListener('submit', function (e) {
                 .then(r => {
                     if (r['result'] == true) {
                         window.sessionStorage.setItem('jwt', r["access_token"]);
+                        window.sessionStorage.setItem('first', 'true');
                         window.location = "/camara";
                     }
                 })
@@ -80,6 +82,7 @@ form_login.addEventListener('submit', function (e) {
         .then(r => {
             if (r['result'] == true) {
                 window.sessionStorage.setItem('jwt', r["access_token"]);
+                window.sessionStorage.setItem('first', 'true');
                 window.location = "/camara";
             }
         })

@@ -47,24 +47,19 @@ async def offer(params: Offer):
     recorder = MediaBlackhole()
     relay = MediaRelay()
     stream = None
-    esc = False
 
     @ pc.on("datachannel")
     def on_datachannel(channel):
         @ channel.on("message")
         async def on_message(message):
-            nonlocal esc
-            if esc == False:
-                if message == "Escape":
-                    esc = True
-                    stream.transform = True
-                r = await stream.set_keys(message)
-                if r != None:
-                    channel.send(json.dumps(r))
-            else:
-                reci = await stream.test_keys(message)
-                if reci["error"] == False:
-                    channel.send(json.dumps(reci))
+            msg = json.loads(message)
+            key = msg["key"]
+            print(msg)
+            status = msg["status"]
+            match status:
+                case 0:
+                    #ME QUEDE EN AGREGAR EL STATUS QUE QUE LO PUEDA USAR EN EL IF DEL FRONTEND
+                    channel.send(json.dumps(await stream.set_keys(key, status)))
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():

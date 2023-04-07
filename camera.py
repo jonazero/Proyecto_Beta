@@ -31,10 +31,10 @@ class VideoTransformTrack(MediaStreamTrack):
         frame = await self.track.recv()
         img = frame.to_ndarray(format="bgr24")
         img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
-        if self.coords and self.transform == True:
+        if self.coords:
             for data in self.coords:
                 img = cv2.circle(
-                    img, (int(self.coords[data][0] * frame.width), int(self.coords[data][1] * frame.height)), 2, (255, 0, 0), 2)
+                    img, (int(self.coords[data][0] * frame.width), int(self.coords[data][1] * frame.height)), 6, (255, 0, 0), -1)
         nf = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         nf = VideoFrame.from_ndarray(nf, format="bgr24")
         nf.pts = frame.pts
@@ -46,49 +46,23 @@ class VideoTransformTrack(MediaStreamTrack):
         frame = await self.track.recv()
         return frame
 
-    async def set_keys(self, data):
+    async def set_keys(self, data, status):
         frame = await self.get_delayed_frame()
         frame = frame.to_ndarray(format="bgr24")
         frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
         results = hands.process(frame)
-        if data == "Escape":
-            for data in self.coords:
-                self.coords[data] = np.divide(
-                    self.coords[data], self.coords[data][3]).tolist()
-            dic2json("./src/coords.json", self.coords)
-            return
-        if data == "b1":
-            print("guardando informacion de los dedos malos")
-            for data in self.coords:
-                self.coords[data] = np.divide(
-                    self.coords[data], self.coords[data][3]).tolist()
-            dic2json("./src/coords_b1.json", self.coords)
-            return
-        if data == "b2":
-            print("guardando informacion de los dedos buenos")
-            for data in self.coords:
-                self.coords[data] = np.divide(
-                    self.coords[data], self.coords[data][3]).tolist()
-            dic2json("./src/coords_b.json", self.coords)
-            return
-
         if results.multi_hand_landmarks:
             for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
                 mano = results.multi_handedness[idx].classification[0].label
-                mp_drawing.draw_landmarks(
-                    frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
                 if data in dis[mano]:
-                    if data in self.coords:
-                        self.coords[data] = np.add(self.coords[data], [hand_landmarks.landmark[dis[mano][data]].x,
-                                                                       hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1]).tolist()
-                    else:
-                        self.coords[data] = ([hand_landmarks.landmark[dis[mano][data]].x,
-                                              hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1])
-
+                    self.coords[data] = ([hand_landmarks.landmark[dis[mano][data]].x,
+                                          hand_landmarks.landmark[dis[mano][data]].y, hand_landmarks.landmark[dis[mano][data]].z, 1])
+                    return {"key": data, "coords": [hand_landmarks.landmark[dis[mano][data]].x,
+                                                    hand_landmarks.landmark[dis[mano][data]].y],
+                                         "status": status}
         else:
-            return {"error": True, "key": data, "first": True, "error_name": "Error de identificacion de manos"}
-        return {"error": False, "key": data, "first": True, "error_name": None}
+            return {"error": "El sistema no pudo detectar las manos. Compruebe la camara."}
 
     async def test_keys(self, data):
         frame = await self.get_delayed_frame()

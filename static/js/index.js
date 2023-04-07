@@ -1,32 +1,27 @@
-const videoElement = document.querySelector('video');
-const videoSelect = document.querySelector('select#videoSource');
-const selectors = [videoSelect];
-
 const typingText = document.querySelector(".typing-text p"),
     inpField = document.querySelector(".wrapper .input-field"),
     tryAgainBtn = document.querySelector(".content button"),
     timeTag = document.querySelector(".time span b"),
     mistakeTag = document.querySelector(".mistake span"),
     wpmTag = document.querySelector(".wpm span"),
-    cpmTag = document.querySelector(".cpm span");
+    cpmTag = document.querySelector(".cpm span"),
+    videoElement = document.querySelector('video'),
+    videoSelect = document.querySelector('select#videoSource'),
+    stadistics = document.querySelector(".content .result-details")
+selectors = [videoSelect];
 
-
-let timer,
+var timer,
     maxTime = 600,
     timeLeft = maxTime,
-    charIndex = mistakes = isTyping = 0;
+    charIndex = mistakes = isTyping = 0,
+    mainNav = document.getElementById('main-nav'),
+    navbarToggle = document.getElementById('navbar-toggle'),
+    pc = null,
+    dc = null;
 
-let mainNav = document.getElementById('main-nav');
-let navbarToggle = document.getElementById('navbar-toggle');
-
-// peer connection
-var pc = null;
-
-// data channel
-var dc = null;
-
-var user_params = null;
-
+tryAgainBtn.addEventListener("click", resetGame);
+loadParagraph();
+document.addEventListener("keypress", sendNormalChar, false);
 function gotDevices(deviceInfos) {
     // Handles being called several times to update labels. Preserve values.
     const values = selectors.map(select => select.value);
@@ -61,6 +56,7 @@ function createPeerConnection() {
         {
             urls: ['stun:stun.l.google.com:19302'],
         },
+        /*
         {
             urls: "turn:openrelay.metered.ca:80",
             username: "openrelayproject",
@@ -76,6 +72,7 @@ function createPeerConnection() {
             username: "openrelayproject",
             credential: "openrelayproject",
         },
+        */
     ];
     pc = new RTCPeerConnection(config);
 
@@ -121,40 +118,46 @@ function negotiate() {
             alert(e);
         });
 }
-
 async function start() {
+    stadistics.style.display = "none";
+    if (sessionStorage.getItem('first') == "true") {
+        document.myparam = 0;
+        alert("Fase de benchmark. Escriba las siguientes oraciones para que el sistema determine su desempeño");
+        sessionStorage.setItem('first', 'false');
+    }
+    else{
+        console.log("entre");
+        document.myparam = 1;
+    }
+    let benchmark_coords = new Object();
+    let testing_coords = new Object();
+    let user_params = null;
     user_params = await getuserParams();
-    console.log(typeof(user_params["matriz_errores_promedio"]));
+    console.log(typeof (user_params["matriz_errores_promedio"]));
     console.log(user_params);
     console.log(user_params["matriz_errores_promedio"]["a"]);
-    let received;
     pc = createPeerConnection();
     dc = pc.createDataChannel('chat');
+    dc.onmessage = function (evt) {
+        msg = JSON.parse(evt.data);
+        if ('error' in msg) {
+            alert(msg.error);
+            throw msg.error;
+        } else if (msg.status === 0) {
+            stadistics.style.display = "flex";
+            let characters = typingText.querySelectorAll("span");
+            if (characters[charIndex].innerText == msg.key) {
+                benchmark_coords[msg.key] = msg.coords;
+            }
+            initTyping(msg.key);
+            console.log(benchmark_coords);
+        }
+    };
     dc.onclose = function () {
         console.log("data channel closed");
     }
     dc.onopen = function () {
         console.log("data channel created");
-    };
-    dc.onmessage = function (evt) {
-        if (evt.data) {
-            received = JSON.parse(evt.data)
-            if (received.error == true && received.first == true) {
-                alert(received.error_name);
-            } else if (received.error == false && received.first == true) {
-                initTyping(received.key);
-            } else {
-                document.querySelectorAll('.result-details').forEach(function (el) {
-                    el.style.display = "flex";
-                });
-                document.querySelectorAll('.content').forEach(function (el) {
-                    el.style.display = "flex";
-                });
-                cf = typingText.querySelectorAll("span")[charIndex + 1].innerText;
-                showFinger(cf);
-                initTyping(received.key);
-            }
-        }
     };
     const videoSource = videoSelect.value;
     const constraints = {
@@ -209,7 +212,6 @@ function stop() {
 }
 
 navbarToggle.addEventListener('click', function () {
-
     if (this.classList.contains('active')) {
         mainNav.style.display = "none";
         this.classList.remove('active');
@@ -221,18 +223,22 @@ navbarToggle.addEventListener('click', function () {
     }
 });
 
-function loadParagraph(par_index) {
+function loadParagraph() {
     typingText.innerHTML = "";
-    paragraphs[par_index].split("").forEach(char => {
+    paragraphs[0].split("").forEach(char => {
         let span = `<span>${char}</span>`
         typingText.innerHTML += span;
     });
+    paragraphs.shift();
     typingText.querySelectorAll("span")[0].classList.add("active");
-    document.addEventListener("keypress", sendNormalChar);
     typingText.addEventListener("click", () => inpField.focus());
 }
 
-function showFinger(cf) {
+function showFinger() {
+    let characters = typingText.querySelectorAll("span");
+    if (charIndex < characters.length - 1) {
+        cf = typingText.querySelectorAll("span")[charIndex + 1].innerText;
+    }
     document.getElementById("ii").src = "../img/manos/1.png";
     document.getElementById("id").src = "../img/manos/2.png";
     if (cf == ' ') {
@@ -258,8 +264,9 @@ function showFinger(cf) {
 }
 
 function sendNormalChar(event) {
+    let status = event.currentTarget.myparam;
     inpField.focus();
-    dc.send(event.key);
+    dc.send(JSON.stringify({ "key": event.key, "status": status }));
 };
 
 function playSound(id) {
@@ -281,7 +288,7 @@ function resetAll() {
 
 function initTyping(kp) {
     let characters = typingText.querySelectorAll("span");
-    if (charIndex < characters.length - 1 && timeLeft > 0) {
+    if (charIndex < characters.length - 1) {
         if (!isTyping) {
             timer = setInterval(initTimer, 1000);
             isTyping = true;
@@ -314,9 +321,7 @@ function initTyping(kp) {
         wpmTag.innerText = wpm;
         mistakeTag.innerText = mistakes;
         cpmTag.innerText = charIndex - mistakes;
-        console.log(charIndex, characters.length);
     } else {
-        dc.send("benchmark")
         resetGame();
     }
 }
@@ -333,7 +338,7 @@ function initTimer() {
 }
 
 function resetGame() {
-    loadParagraph(1);
+    loadParagraph();
     clearInterval(timer);
     timeLeft = maxTime;
     charIndex = mistakes = isTyping = 0;
@@ -344,11 +349,11 @@ function resetGame() {
     cpmTag.innerText = 0;
 }
 
-loadParagraph(0);
-tryAgainBtn.addEventListener("click", resetGame);
+
+
 
 async function getuserParams() {
-    let response = await fetch("/user/params", {headers: { "Authorization": "Bearer " + window.sessionStorage.getItem("jwt")}})
+    let response = await fetch("/user/params", { headers: { "Authorization": "Bearer " + window.sessionStorage.getItem("jwt") } })
     let data = await handleErrors(response);
     return data;
 }
@@ -362,3 +367,5 @@ async function handleErrors(response) {
     }
     return jsonresponse;
 }
+
+
