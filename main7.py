@@ -8,7 +8,7 @@ model = GPT2LMHeadModel.from_pretrained(
 tokenizer = GPT2Tokenizer.from_pretrained("mrm8488/spanish-gpt2")
 #force_word = "tierra"
 force_flexible = ["quería", "usába", "felíz", "amaba", "usar",
-                  "balon", "perico", "mundo", "mor", "acaba", "mentira", "canción"]
+                  "balon", "perico", "mundo", "amor", "acaba", "mentira", "canción"]
 force_words_ids = [
     tokenizer(force_flexible, add_prefix_space=True,
               add_special_tokens=False).input_ids,

@@ -28,7 +28,7 @@ video {
 }
 
 .hands {
-  display: flex;
+  display: none;
   justify-content: center;
 }
 
@@ -232,7 +232,7 @@ video {
 }
 
 .content .result-details {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   align-items: center;
   width: calc(100% - 140px);

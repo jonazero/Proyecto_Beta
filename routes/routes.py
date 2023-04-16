@@ -56,10 +56,11 @@ async def offer(params: Offer):
             key = msg["key"]
             print(msg)
             status = msg["status"]
-            match status:
-                case 0:
-                    #ME QUEDE EN AGREGAR EL STATUS QUE QUE LO PUEDA USAR EN EL IF DEL FRONTEND
-                    channel.send(json.dumps(await stream.set_keys(key, status)))
+            if status == 0 or status == 1:
+                channel.send(json.dumps(await stream.set_keys(key, status)))
+            else:
+                print("caca")
+
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():

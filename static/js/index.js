@@ -7,8 +7,11 @@ const typingText = document.querySelector(".typing-text p"),
     cpmTag = document.querySelector(".cpm span"),
     videoElement = document.querySelector('video'),
     videoSelect = document.querySelector('select#videoSource'),
-    stadistics = document.querySelector(".content .result-details")
-selectors = [videoSelect];
+    stadistics = document.querySelector(".content .result-details"),
+    hands = document.querySelector(".hands"),
+    audioElements = document.querySelectorAll('audio[id^="sound-"]'),
+    selectors = [videoSelect];
+
 
 var timer,
     maxTime = 600,
@@ -16,12 +19,14 @@ var timer,
     charIndex = mistakes = isTyping = 0,
     mainNav = document.getElementById('main-nav'),
     navbarToggle = document.getElementById('navbar-toggle'),
+    generatedpan = "",
     pc = null,
-    dc = null;
+    dc = null,
+    constraints = null;
 
-tryAgainBtn.addEventListener("click", resetGame);
-loadParagraph();
-document.addEventListener("keypress", sendNormalChar, false);
+
+tryAgainBtn.addEventListener("click", reset);
+
 function gotDevices(deviceInfos) {
     // Handles being called several times to update labels. Preserve values.
     const values = selectors.map(select => select.value);
@@ -119,72 +124,98 @@ function negotiate() {
         });
 }
 async function start() {
-    stadistics.style.display = "none";
-    if (sessionStorage.getItem('first') == "true") {
-        document.myparam = 0;
-        alert("Fase de benchmark. Escriba las siguientes oraciones para que el sistema determine su desempeño");
-        sessionStorage.setItem('first', 'false');
-    }
-    else{
-        console.log("entre");
-        document.myparam = 1;
-    }
-    let benchmark_coords = new Object();
-    let testing_coords = new Object();
-    let user_params = null;
-    user_params = await getuserParams();
-    console.log(typeof (user_params["matriz_errores_promedio"]));
-    console.log(user_params);
-    console.log(user_params["matriz_errores_promedio"]["a"]);
     pc = createPeerConnection();
     dc = pc.createDataChannel('chat');
+    constraints = {
+        audio: false,
+        video: {
+            deviceId: videoSelect.value, width: { min: 900, max: 1920 },
+            height: { min: 700, max: 1080 }
+        }
+    };
+    if (constraints.video) {
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(function (stream) {
+                navigator.mediaDevices.enumerateDevices()
+                    .then(gotDevices).catch(handleError);
+                stream.getTracks().forEach(function (track) {
+                    pc.addTrack(track, stream);
+                });
+                return negotiate();
+            }, function (err) {
+                alert(err);
+            });
+    } else {
+        negotiate();
+    }
+    /*
     dc.onmessage = function (evt) {
         msg = JSON.parse(evt.data);
         if ('error' in msg) {
             alert(msg.error);
             throw msg.error;
         } else if (msg.status === 0) {
-            stadistics.style.display = "flex";
             let characters = typingText.querySelectorAll("span");
             if (characters[charIndex].innerText == msg.key) {
                 benchmark_coords[msg.key] = msg.coords;
             }
             initTyping(msg.key);
-            console.log(benchmark_coords);
+        } else if (msg.status === 1) {
+            showFinger();
+            let characters = typingText.querySelectorAll("span");
+            if (characters[charIndex].innerText == msg.key) {
+                testing_coords[msg.key] = msg.coords;
+            }
+            initTyping(msg.key);
         }
     };
+    */
     dc.onclose = function () {
         console.log("data channel closed");
     }
     dc.onopen = function () {
         console.log("data channel created");
     };
-    const videoSource = videoSelect.value;
-    const constraints = {
-        audio: false,
-        video: { deviceId: videoSource, width: { min: 900, max: 1920 }, height: { min: 700, max: 1080 } }
-    };
-    if (constraints.video) {
-        //navigator.mediaDevices.getUserMedia(constraints).then(gotStream).then(gotDevices).catch(handleError);
-        navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
-            stream.getTracks().forEach(function (track) {
-                navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
-                pc.addTrack(track, stream);
-            });
-            return negotiate();
-        }, function (err) {
-            alert(err);
-        });
-
-    } else {
-        negotiate();
+    let benchmark_coords = new Object(),
+        testing_coords = new Object(),
+        camera_coords = new Object(),
+        user_params = new Object();
+    user_params = await getuserParams();
+    if (sessionStorage.getItem('first') === "true" || Object.keys(user_params.matriz_errores_promedio).length === 0) {
+        alert("Benchmark. \nPor favor escribe las siguientes oraciones para que el sistema determine tu desempeño.");
+        sessionStorage.setItem('first', 'false');
+        for (let index = 0; index < paragraphs.length; index++) {
+            await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 0));
+        }
+        alert("Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
+        hands.style.display = "flex";
+        for (let index = 0; index < paragraphs.length; index++) {
+            await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1));
+        }
+    } else if (Object.keys(user_params.matriz_errores_promedio).length !== 0) {
+        alert("Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
+        hands.style.display = "flex";
+        for (let index = 0; index < paragraphs.length; index++) {
+            await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1));
+        }
     }
 }
 videoSelect.onchange = function () {
-    pc.getSenders().forEach(function (sender) {
-        sender.track.stop();
-    });
-    start();
+    constraints = {
+        audio: false,
+        video: { deviceId: videoSelect.value, width: { min: 900, max: 1920 }, height: { min: 700, max: 1080 } }
+    };
+    if (constraints.video) {
+        navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+            stream.getTracks().forEach(function (track) {
+                pc.getSenders().forEach(function (sender) {
+                    sender.replaceTrack(track);
+                });
+            });
+        }, function (err) {
+            alert(err);
+        });
+    }
 }
 function stop() {
     // close data channel
@@ -223,25 +254,35 @@ navbarToggle.addEventListener('click', function () {
     }
 });
 
-function loadParagraph() {
-    typingText.innerHTML = "";
-    paragraphs[0].split("").forEach(char => {
-        let span = `<span>${char}</span>`
-        typingText.innerHTML += span;
-    });
-    paragraphs.shift();
-    typingText.querySelectorAll("span")[0].classList.add("active");
-    typingText.addEventListener("click", () => inpField.focus());
+function loadParagraph(sentence) {
+    return new Promise(resolve => {
+        typingText.innerHTML = "";
+        sentence.split("").forEach(char => {
+            let span = `<span>${char}</span>`
+            typingText.innerHTML += span;
+        });
+        typingText.querySelectorAll("span")[0].classList.add("active");
+        typingText.addEventListener("click", () => inpField.focus());
+        showFinger();
+        resolve(sentence.length);
+    })
 }
 
-function showFinger() {
-    let characters = typingText.querySelectorAll("span");
+function showFinger(firstpressed) {
+    let characters = typingText.querySelectorAll("span"),
+        cf = null;
     if (charIndex < characters.length - 1) {
-        cf = typingText.querySelectorAll("span")[charIndex + 1].innerText;
+        if (firstpressed == true) {
+            cf = typingText.querySelectorAll("span")[charIndex].innerText;
+        } else {
+            cf = typingText.querySelectorAll("span")[charIndex + 1].innerText;
+        }
+
     }
     document.getElementById("ii").src = "../img/manos/1.png";
     document.getElementById("id").src = "../img/manos/2.png";
-    if (cf == ' ') {
+    if (cf == null) { }
+    else if (cf == ' ') {
         document.getElementById("ii").src = "../img/manos/1p.png";
         document.getElementById("id").src = "../img/manos/2p.png";
     } else if (cf == '1' || cf == 'q' || cf == 'z' || cf == 'a') {
@@ -265,20 +306,20 @@ function showFinger() {
 
 function sendNormalChar(event) {
     let status = event.currentTarget.myparam;
+    showFinger(false);
     inpField.focus();
     dc.send(JSON.stringify({ "key": event.key, "status": status }));
 };
 
 function playSound(id) {
     const audioElement = document.getElementById(id);
-    resetAll();
+    resetSound();
     if (audioElement.paused) {
         audioElement.play();
     }
 };
 
-function resetAll() {
-    const audioElements = document.querySelectorAll('audio[id^="sound-"]');
+function resetSound() {
     audioElements.forEach(audioElement => {
         audioElement.pause();
         audioElement.currentTime = 0;
@@ -288,7 +329,7 @@ function resetAll() {
 
 function initTyping(kp) {
     let characters = typingText.querySelectorAll("span");
-    if (charIndex < characters.length - 1) {
+    if (charIndex < characters.length) {
         if (!isTyping) {
             timer = setInterval(initTimer, 1000);
             isTyping = true;
@@ -313,8 +354,9 @@ function initTyping(kp) {
             charIndex++;
         }
         characters.forEach(span => span.classList.remove("active"));
-        characters[charIndex].classList.add("active");
-
+        if (charIndex < characters.length - 1) {
+            characters[charIndex].classList.add("active");
+        }
         let wpm = Math.round(((charIndex - mistakes) / 5) / (maxTime - timeLeft) * 60);
         wpm = wpm < 0 || !wpm || wpm === Infinity ? 0 : wpm;
 
@@ -322,7 +364,6 @@ function initTyping(kp) {
         mistakeTag.innerText = mistakes;
         cpmTag.innerText = charIndex - mistakes;
     } else {
-        resetGame();
     }
 }
 
@@ -337,8 +378,7 @@ function initTimer() {
     }
 }
 
-function resetGame() {
-    loadParagraph();
+function reset() {
     clearInterval(timer);
     timeLeft = maxTime;
     charIndex = mistakes = isTyping = 0;
@@ -349,9 +389,6 @@ function resetGame() {
     cpmTag.innerText = 0;
 }
 
-
-
-
 async function getuserParams() {
     let response = await fetch("/user/params", { headers: { "Authorization": "Bearer " + window.sessionStorage.getItem("jwt") } })
     let data = await handleErrors(response);
@@ -361,6 +398,7 @@ async function getuserParams() {
 async function handleErrors(response) {
     let jsonresponse;
     jsonresponse = await response.json();
+    console.log(jsonresponse);
     if (!response.ok) {
         alert(jsonresponse.detail);
         throw Error(response.statusText);
@@ -368,4 +406,40 @@ async function handleErrors(response) {
     return jsonresponse;
 }
 
+async function waitForKeyPress(len, status) {
+    return new Promise(resolve => {
+        const onKeyDown = (event) => {
+            console.log(len);
+            if (len === 1) {
+                document.removeEventListener('keydown', onKeyDown);
+                reset();
+                resolve();
+
+            }
+            else {
+                dc.send(JSON.stringify({ "key": event.key, "status": status }));
+                showFinger();
+                waitForMessage(dc).then(data => {
+                    msg = JSON.parse(data);
+                    if ('error' in msg) {
+                        alert(msg.error);
+                        throw msg.error;
+                    } else {
+                        initTyping(event.key);
+                        len--;
+                    }
+                });
+            }
+        }
+        document.addEventListener('keydown', onKeyDown);
+    });
+}
+
+function waitForMessage(dc) {
+    return new Promise(resolve => {
+        dc.onmessage = event => {
+            resolve(event.data);
+        };
+    });
+}
 
