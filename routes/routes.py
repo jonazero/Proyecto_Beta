@@ -1,3 +1,4 @@
+from fastapi import FastAPI
 from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 from starlette.requests import Request
@@ -8,6 +9,13 @@ from aiortc.contrib.media import MediaRelay, MediaBlackhole
 from camera import VideoTransformTrack
 from models.user import UserParamsModel
 from jsonwt import get_current_user_params
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from database.db import SessionLocal, engine
+from database.dict import query_database
+from models.dictionary import Word, Base
+from pydantic import BaseModel
+from typing import List
 import json
 import asyncio
 import os
@@ -17,6 +25,7 @@ templates = Jinja2Templates(directory="templates")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_SECRET = os.getenv("GOOGLE_SECRET")
 pcs = set()
+Base.metadata.create_all(bind=engine)
 
 
 @routes.get("/", response_class=HTMLResponse)
@@ -33,11 +42,21 @@ async def signup(request: Request):
 async def camara(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 @routes.get("/user/params")
 async def UserParams(params: UserParamsModel = Depends(get_current_user_params)):
     return params
 
 
+@routes.post("/words/")
+async def get_words(letters: List[str], limit: int = 10):
+    query_string = "SELECT word FROM words WHERE word LIKE '%"
+    for letter in letters:
+        query_string += f"{letter}%"
+    query_string += f"' LIMIT {limit};"
+    rows = query_database(query_string)
+    words = [row[0] for row in rows]
+    return {'words': words}
 
 @routes.post("/offer_cv")
 async def offer(params: Offer):
@@ -60,7 +79,6 @@ async def offer(params: Offer):
                 channel.send(json.dumps(await stream.set_keys(key, status)))
             else:
                 print("caca")
-
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():
@@ -95,4 +113,3 @@ async def on_shutdown():
     coros = [pc.close() for pc in pcs]
     await asyncio.gather(*coros)
     pcs.clear()
-

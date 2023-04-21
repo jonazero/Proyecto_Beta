@@ -4,9 +4,11 @@ from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from db import is_token_blacklisted
+from database.dict import query_database
 from database.user import get_by_email
 from starlette.responses import JSONResponse
 from models.user import UserParamsModel
+from models.dictionary import Word
 # Create a fake db:
 FAKE_DB = {'jonazeroenigma@gmail.com': {'name': 'Jonathan Israel Diaz Guevara'}}
 
@@ -94,6 +96,27 @@ async def get_current_user_params(token: str = Depends(oauth2_scheme)):
         raise CREDENTIALS_EXCEPTION
     else:
         return UserParamsModel(**params)
+
+
+async def get_words_from_dict(token: str = Depends(oauth2_scheme)):
+    if is_token_blacklisted(token):
+        print("blacklisted token")
+        raise CREDENTIALS_EXCEPTION
+    try:
+        payload = decode_token(token)
+        email: str = payload.get('sub')
+        if email is None:
+            print("email is none")
+            raise CREDENTIALS_EXCEPTION
+    except JWTError:
+        print("credential exception")
+        raise CREDENTIALS_EXCEPTION
+    query_string = f"SELECT word FROM words WHERE word LIKE '%{letters}%' LIMIT {limit};"
+    rows = query_database(query_string)
+    words = [row[0] for row in rows]
+    return Word(**words)
+    
+    
 
 
 async def get_current_user_token(token: str = Depends(oauth2_scheme)):

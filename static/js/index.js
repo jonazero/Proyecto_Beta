@@ -10,7 +10,44 @@ const typingText = document.querySelector(".typing-text p"),
     stadistics = document.querySelector(".content .result-details"),
     hands = document.querySelector(".hands"),
     audioElements = document.querySelectorAll('audio[id^="sound-"]'),
-    selectors = [videoSelect];
+    selectors = [videoSelect],
+    iiElement = document.getElementById("ii"),
+    idElement = document.getElementById("id"),
+    spanElements = typingText.querySelectorAll("span")
+    fingerImages = {
+    " ": ["../img/manos/1p.png", "../img/manos/2p.png"],
+    "1": ["../img/manos/1m.png"],
+    "q": ["../img/manos/1m.png"],
+    "z": ["../img/manos/1m.png"],
+    "a": ["../img/manos/1m.png"],
+    "2": ["../img/manos/1a.png"],
+    "x": ["../img/manos/1a.png"],
+    "w": ["../img/manos/1a.png"],
+    "s": ["../img/manos/1a.png"],
+    "3": ["../img/manos/1med.png"],
+    "c": ["../img/manos/1med.png"],
+    "d": ["../img/manos/1med.png"],
+    "e": ["../img/manos/1med.png"],
+    "5": ["../img/manos/1i.png"],
+    "4": ["../img/manos/1i.png"],
+    "v": ["../img/manos/1i.png"],
+    "b": ["../img/manos/1i.png"],
+    "g": ["../img/manos/1i.png"],
+    "t": ["../img/manos/1i.png"],
+    "r": ["../img/manos/1i.png"],
+    "f": ["../img/manos/1i.png"],
+    "0": ["../img/manos/2m.png"],
+    "ñ": ["../img/manos/2m.png"],
+    "p": ["../img/manos/2m.png"],
+    "9": ["../img/manos/2a.png"],
+    ".": ["../img/manos/2a.png"],
+    "l": ["../img/manos/2a.png"],
+    "o": ["../img/manos/2a.png"],
+    "8": ["../img/manos/2med.png"],
+    ",": ["../img/manos/2med.png"],
+    "k": ["../img/manos/2med.png"],
+    "i": ["../img/manos/2med.png"],
+};
 
 
 var timer,
@@ -89,40 +126,31 @@ function createPeerConnection() {
     return pc;
 }
 
-function negotiate() {
-    return pc.createOffer().then(function (offer) {
-        return pc.setLocalDescription(offer);
-    }).then(function () {
-        // wait for ICE gathering to complete
-        return new Promise(function (resolve) {
-            if (pc.iceGatheringState === "complete") {
+async function negotiate() {
+    try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        // Wait for ICE gathering to complete
+        await new Promise(resolve => {
+            if (pc.iceGatheringState === 'complete') {
                 resolve();
             } else {
-                function checkState() {
-                    if (pc.iceGatheringState === "complete") {
-                        pc.removeEventListener("icegatheringstatechange", checkState);
+                function onIceGatheringStateChange() {
+                    if (pc.iceGatheringState === 'complete') {
+                        pc.removeEventListener('icegatheringstatechange', onIceGatheringStateChange);
                         resolve();
                     }
                 }
-                pc.addEventListener("icegatheringstatechange", checkState);
+                pc.addEventListener('icegatheringstatechange', onIceGatheringStateChange);
             }
         });
-    })
-        .then(function () {
-            var offer = pc.localDescription;
-            return fetch("/offer_cv", {
-                body: JSON.stringify({ sdp: offer.sdp, type: offer.type, video_transform: 'none' }),
-                headers: { "Content-Type": "application/json" },
-                method: "POST",
-            });
-        }).then(function (response) {
-            return response.json();
-        }).then(function (answer) {
-            return pc.setRemoteDescription(answer);
-        }).catch(function (e) {
-            alert(e);
-        });
+        return pc.localDescription;
+    } catch (error) {
+        console.error('Error negotiating WebRTC connection:', error);
+        return null;
+    }
 }
+
 async function start() {
     pc = createPeerConnection();
     dc = pc.createDataChannel('chat');
@@ -148,28 +176,6 @@ async function start() {
     } else {
         negotiate();
     }
-    /*
-    dc.onmessage = function (evt) {
-        msg = JSON.parse(evt.data);
-        if ('error' in msg) {
-            alert(msg.error);
-            throw msg.error;
-        } else if (msg.status === 0) {
-            let characters = typingText.querySelectorAll("span");
-            if (characters[charIndex].innerText == msg.key) {
-                benchmark_coords[msg.key] = msg.coords;
-            }
-            initTyping(msg.key);
-        } else if (msg.status === 1) {
-            showFinger();
-            let characters = typingText.querySelectorAll("span");
-            if (characters[charIndex].innerText == msg.key) {
-                testing_coords[msg.key] = msg.coords;
-            }
-            initTyping(msg.key);
-        }
-    };
-    */
     dc.onclose = function () {
         console.log("data channel closed");
     }
@@ -187,13 +193,18 @@ async function start() {
         for (let index = 0; index < paragraphs.length; index++) {
             await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 0));
         }
-        alert("Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
+        alert("Camara. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
         hands.style.display = "flex";
         for (let index = 0; index < paragraphs.length; index++) {
             await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1));
         }
+        reset()
+        alert("Palabras.Escribe la oracion segun indique el dedo.")
+        for (let index = 0; index < paragraphs.length; index++) {
+            await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1));
+        }
     } else if (Object.keys(user_params.matriz_errores_promedio).length !== 0) {
-        alert("Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
+        alert("Palabras.Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
         hands.style.display = "flex";
         for (let index = 0; index < paragraphs.length; index++) {
             await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1));
@@ -263,53 +274,23 @@ function loadParagraph(sentence) {
         });
         typingText.querySelectorAll("span")[0].classList.add("active");
         typingText.addEventListener("click", () => inpField.focus());
-        showFinger();
         resolve(sentence.length);
+        showFinger(true);
     })
 }
 
-function showFinger(firstpressed) {
-    let characters = typingText.querySelectorAll("span"),
-        cf = null;
-    if (charIndex < characters.length - 1) {
-        if (firstpressed == true) {
-            cf = typingText.querySelectorAll("span")[charIndex].innerText;
-        } else {
-            cf = typingText.querySelectorAll("span")[charIndex + 1].innerText;
-        }
-
+function showFinger(opt) {
+    const charIndexOffset = opt ? 0 : 1;
+    const charElement = spanElements[charIndex + charIndexOffset];
+    if (!charElement) {
+        return;
     }
-    document.getElementById("ii").src = "../img/manos/1.png";
-    document.getElementById("id").src = "../img/manos/2.png";
-    if (cf == null) { }
-    else if (cf == ' ') {
-        document.getElementById("ii").src = "../img/manos/1p.png";
-        document.getElementById("id").src = "../img/manos/2p.png";
-    } else if (cf == '1' || cf == 'q' || cf == 'z' || cf == 'a') {
-        document.getElementById("ii").src = "../img/manos/1m.png";
-    } else if (cf == '2' || cf == 'x' || cf == 'w' || cf == 's') {
-        document.getElementById("ii").src = "../img/manos/1a.png";
-    } else if (cf == '3' || cf == 'c' || cf == 'd' || cf == 'e') {
-        document.getElementById("ii").src = "../img/manos/1med.png";
-    } else if (cf == '5' || cf == '4' || cf == 'v' || cf == 'b' || cf == 'g' || cf == 't' || cf == 'r' || cf == 'f') {
-        document.getElementById("ii").src = "../img/manos/1i.png";
-    } else if (cf == '0' || cf == 'ñ' || cf == 'p') {
-        document.getElementById("id").src = "../img/manos/2m.png";
-    } else if (cf == '9' || cf == '.' || cf == 'l' || cf == 'o') {
-        document.getElementById("id").src = "../img/manos/2a.png";
-    } else if (cf == '8' || cf == ',' || cf == 'k' || cf == 'i') {
-        document.getElementById("id").src = "../img/manos/2med.png";
-    } else {
-        document.getElementById("id").src = "../img/manos/2i.png";
-    }
+    const cf = charElement.innerText.toLowerCase();
+    console.log(cf);
+    const images = fingerImages[cf] || [];
+    iiElement.src = images[0] || "../img/manos/1.png";
+    idElement.src = images[1] || "../img/manos/2.png";
 }
-
-function sendNormalChar(event) {
-    let status = event.currentTarget.myparam;
-    showFinger(false);
-    inpField.focus();
-    dc.send(JSON.stringify({ "key": event.key, "status": status }));
-};
 
 function playSound(id) {
     const audioElement = document.getElementById(id);
@@ -327,45 +308,62 @@ function resetSound() {
 };
 
 
-function initTyping(kp) {
-    let characters = typingText.querySelectorAll("span");
-    if (charIndex < characters.length) {
-        if (!isTyping) {
-            timer = setInterval(initTimer, 1000);
-            isTyping = true;
-        }
-        if (kp == null) {
-            if (charIndex > 0) {
-                charIndex--;
-                if (characters[charIndex].classList.contains("incorrect")) {
-                    mistakes--;
-                }
-                characters[charIndex].classList.remove("correct", "incorrect");
-            }
-        } else {
-            if (characters[charIndex].innerText == kp) {
-                characters[charIndex].classList.add("correct");
-                playSound('sound-key');
-            } else {
-                mistakes++;
-                characters[charIndex].classList.add("incorrect");
-                playSound('sound-mistake')
-            }
-            charIndex++;
-        }
-        characters.forEach(span => span.classList.remove("active"));
-        if (charIndex < characters.length - 1) {
-            characters[charIndex].classList.add("active");
-        }
-        let wpm = Math.round(((charIndex - mistakes) / 5) / (maxTime - timeLeft) * 60);
-        wpm = wpm < 0 || !wpm || wpm === Infinity ? 0 : wpm;
+function initTyping(keyPressed) {
+    const characters = typingText.querySelectorAll("span");
+    const maxCharIndex = characters.length - 1;
 
-        wpmTag.innerText = wpm;
-        mistakeTag.innerText = mistakes;
-        cpmTag.innerText = charIndex - mistakes;
-    } else {
+    // Validate the input parameter
+    if (keyPressed && typeof keyPressed !== "string" && keyPressed.length !== 1) {
+        throw new Error("Invalid input");
     }
+
+    // Move back one character if no key is pressed
+    if (!keyPressed && charIndex > 0) {
+        charIndex--;
+        const prevChar = characters[charIndex];
+        if (prevChar.classList.contains("incorrect")) {
+            mistakes--;
+        }
+        prevChar.classList.remove("correct", "incorrect");
+    }
+
+    // Move forward one character if a key is pressed
+    if (keyPressed && charIndex <= maxCharIndex) {
+        const currentChar = characters[charIndex];
+        if (currentChar.innerText === keyPressed) {
+            currentChar.classList.add("correct");
+            playSound('sound-key');
+        } else {
+            mistakes++;
+            currentChar.classList.add("incorrect");
+            playSound('sound-mistake')
+        }
+        charIndex++;
+    }
+
+    // Update the active class
+    characters.forEach(span => span.classList.remove("active"));
+    if (charIndex < maxCharIndex) {
+        characters[charIndex].classList.add("active");
+    }
+
+    // Calculate and display the WPM, mistakes, and CPM
+    const wpm = calculateWpm(charIndex, mistakes, maxTime, timeLeft);
+    wpmTag.innerText = wpm || 0;
+    mistakeTag.innerText = mistakes;
+    cpmTag.innerText = charIndex - mistakes;
 }
+
+function calculateWpm(charIndex, mistakes, maxTime, timeLeft) {
+    const totalChars = charIndex - mistakes;
+    const elapsedTime = maxTime - timeLeft;
+    if (totalChars === 0 || elapsedTime === 0) {
+        return 0;
+    }
+    const wpm = Math.round(totalChars / 5 / (elapsedTime / 60));
+    return isFinite(wpm) ? wpm : 0;
+}
+
 
 function initTimer() {
     if (timeLeft > 0) {
@@ -409,27 +407,26 @@ async function handleErrors(response) {
 async function waitForKeyPress(len, status) {
     return new Promise(resolve => {
         const onKeyDown = (event) => {
-            console.log(len);
-            if (len === 1) {
-                document.removeEventListener('keydown', onKeyDown);
-                reset();
-                resolve();
-
+            if (len >= 1) {
+                showFinger(false);
             }
-            else {
-                dc.send(JSON.stringify({ "key": event.key, "status": status }));
-                showFinger();
-                waitForMessage(dc).then(data => {
-                    msg = JSON.parse(data);
-                    if ('error' in msg) {
-                        alert(msg.error);
-                        throw msg.error;
-                    } else {
-                        initTyping(event.key);
-                        len--;
+            console.log("este es len: ", len);
+            dc.send(JSON.stringify({ "key": event.key, "status": status }));
+            waitForMessage(dc).then(data => {
+                msg = JSON.parse(data);
+                if ('error' in msg) {
+                    alert(msg.error);
+                    throw msg.error;
+                } else {
+                    initTyping(event.key);
+                    len--;
+                    if (len === 0) {
+                        document.removeEventListener('keydown', onKeyDown);
+                        reset();
+                        resolve();
                     }
-                });
-            }
+                }
+            });
         }
         document.addEventListener('keydown', onKeyDown);
     });
