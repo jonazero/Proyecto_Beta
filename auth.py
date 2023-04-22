@@ -106,7 +106,6 @@ async def login_for_access_token(email: str = Body(), pwd: str = Body()):
 
 @auth_app.post("/create-user")
 def create(user: User):
-
     if not get_by_email(user.email):
         user.pwd = get_password_hash(user.pwd)
         return (create_user(user.dict()))

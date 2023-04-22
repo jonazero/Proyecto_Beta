@@ -75,7 +75,7 @@ form_login.addEventListener('submit', function (e) {
     }
     fetch("/auth/token", {
         body: JSON.stringify({ email: user.get("email"), pwd: user.get("pwd") }),
-            
+        headers: { "Content-type": "application/json;charset=UTF-8" },
         method: "POST"
     })
         .then(handleErrors)
