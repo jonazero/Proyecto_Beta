@@ -73,10 +73,11 @@ async def offer(params: Offer):
         async def on_message(message):
             msg = json.loads(message)
             key = msg["key"]
-            print(msg)
             status = msg["status"]
             if status == 0 or status == 1:
-                channel.send(json.dumps(await stream.set_keys(key, status)))
+                r = json.dumps(await stream.set_keys(key, status))
+                print(r)
+                channel.send(r)
             else:
                 print("caca")
 
