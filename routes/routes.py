@@ -1,21 +1,17 @@
-from fastapi import FastAPI
 from fastapi import APIRouter, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from src.schemas import Offer
 from aiortc.contrib.media import MediaRelay, MediaBlackhole
 from camera import VideoTransformTrack
+from models.dictionary import ArrayRequest, SentencesModel
 from models.user import UserParamsModel
 from jsonwt import get_current_user_params
-from sqlalchemy.orm import Session
-from sqlalchemy import text
-from database.db import SessionLocal, engine
+from database.db import  engine
 from database.dict import query_database
-from models.dictionary import Word, Base
-from pydantic import BaseModel
-from typing import List
+from models.dictionary import Base
 import json
 import asyncio
 import os
@@ -49,14 +45,21 @@ async def UserParams(params: UserParamsModel = Depends(get_current_user_params))
 
 
 @routes.post("/words/")
-async def get_words(letters: List[str], limit: int = 10):
+async def get_words(data: ArrayRequest):
     query_string = "SELECT word FROM words WHERE word LIKE '%"
+    letters = data.letters
+    limit = data.limit
     for letter in letters:
         query_string += f"{letter}%"
     query_string += f"' LIMIT {limit};"
     rows = query_database(query_string)
     words = [row[0] for row in rows]
-    return {'words': words}
+    return JSONResponse(content={'words': words})
+
+@routes.post("/sentences/")
+async def generate_sentences(sentences: SentencesModel):
+    #generateSentences()
+    return "hola"
 
 @routes.post("/offer_cv")
 async def offer(params: Offer):

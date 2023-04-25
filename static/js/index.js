@@ -85,6 +85,34 @@ var timer,
 
 
 tryAgainBtn.addEventListener("click", reset);
+videoSelect.onchange = function () {
+    constraints = {
+        audio: false,
+        video: { deviceId: videoSelect.value, width: { min: 900, max: 1920 }, height: { min: 700, max: 1080 } }
+    };
+    if (constraints.video) {
+        navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+            stream.getTracks().forEach(function (track) {
+                pc.getSenders().forEach(function (sender) {
+                    sender.replaceTrack(track);
+                });
+            });
+        }, function (err) {
+            alert(err);
+        });
+    }
+}
+navbarToggle.addEventListener('click', function () {
+    if (this.classList.contains('active')) {
+        mainNav.style.display = "none";
+        this.classList.remove('active');
+    }
+    else {
+        mainNav.style.display = "flex";
+        this.classList.add('active');
+
+    }
+});
 
 function gotDevices(deviceInfos) {
     // Handles being called several times to update labels. Preserve values.
@@ -210,53 +238,69 @@ async function start() {
     } else {
         negotiate();
     }
-    dc.onclose = function () {
-        console.log("data channel closed");
-    }
-    dc.onopen = function () {
-        console.log("data channel created");
-    };
+    dc.onclose = () => console.log("data channel closed");
+    dc.onopen = () => console.log("data channel created");
+
+    coordinate(0);
+}
+
+async function coordinate(stat) {
+    first = sessionStorage.getItem("first");
     let benchmark_coords = new Object(),
-        testing_coords = new Object(),
+        practice_coords = new Object(),
         camera_coords = new Object(),
         user_params = new Object();
     user_params = await getuserParams();
-    if (sessionStorage.getItem('first') === "true" || Object.keys(user_params.matriz_errores_promedio).length === 0) {
+    if (first === "true" && stat === 0) {
         alert("Benchmark. \nPor favor escribe las siguientes oraciones para que el sistema determine tu desempeño.");
         sessionStorage.setItem('first', 'false');
         for (let index = 0; index < paragraphs.length; index++) {
-            await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 0));
+            Object.assign(benchmark_coords, await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 0)));
         }
-        alert("Camara. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
+        stat = 1;
+    }
+    else {
+        stat = 1;
+    }
+    if (stat === 1) {
+        alert("Camera. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
         hands.style.display = "flex";
         for (let index = 0; index < paragraphs.length; index++) {
-            await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1));
+            Object.assign(camera_coords, await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1)));
         }
-        reset();
-    } else if (Object.keys(user_params.matriz_errores_promedio).length !== 0) {
-        alert("Palabras.Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
-        hands.style.display = "flex";
-        for (let index = 0; index < paragraphs.length; index++) {
-            await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1));
+        stat = 2;
+    }
+    if (stat === 2) {
+        alert("Practice. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
+        console.log(getKeysWithDiffGreaterThanThreshold(camera_coords, benchmark_coords, 25));
+        try {
+            const response = await fetch("/words/", {
+                body: JSON.stringify({ letters: ["an", "es"], limit: 10 }),
+                headers: { "Content-type": "application/json;charset=UTF-8" },
+                method: "POST"
+            });
+            const data = await handleErrors(response).json();
+            const words = data.words;
+            console.log(words);
+        } catch (error) {
+            console.error(error.message);
         }
     }
 }
-videoSelect.onchange = function () {
-    constraints = {
-        audio: false,
-        video: { deviceId: videoSelect.value, width: { min: 900, max: 1920 }, height: { min: 700, max: 1080 } }
-    };
-    if (constraints.video) {
-        navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
-            stream.getTracks().forEach(function (track) {
-                pc.getSenders().forEach(function (sender) {
-                    sender.replaceTrack(track);
-                });
-            });
-        }, function (err) {
-            alert(err);
-        });
+function getKeysWithDiffGreaterThanThreshold(keyboard1, keyboard2, threshold) {
+    const keysWithDiff = [];
+    for (const key in keyboard1) {
+        if (keyboard2.hasOwnProperty(key)) {
+            const coords1 = keyboard1[key];
+            const coords2 = keyboard2[key];
+            const percentDiffX = Math.abs(coords1[0] - coords2[0]) / ((coords1[0] + coords2[0]) / 2) * 100;
+            const percentDiffY = Math.abs(coords1[1] - coords2[1]) / ((coords1[1] + coords2[1]) / 2) * 100;
+            if (percentDiffX > threshold || percentDiffY > threshold) {
+                keysWithDiff.push(key);
+            }
+        }
     }
+    return keysWithDiff;
 }
 function stop() {
     // close data channel
@@ -283,18 +327,6 @@ function stop() {
     }, 500);
 }
 
-navbarToggle.addEventListener('click', function () {
-    if (this.classList.contains('active')) {
-        mainNav.style.display = "none";
-        this.classList.remove('active');
-    }
-    else {
-        mainNav.style.display = "flex";
-        this.classList.add('active');
-
-    }
-});
-
 function loadParagraph(sentence) {
     return new Promise(resolve => {
         typingText.innerHTML = "";
@@ -312,9 +344,6 @@ function loadParagraph(sentence) {
 function showFinger(opt) {
     const charIndexOffset = opt ? 0 : 1;
     const charElement = spanElements[charIndex + charIndexOffset];
-    if (!charElement) {
-        return;
-    }
     const cf = charElement.innerText.toLowerCase();
     console.log(cf);
     const images = fingerImages[cf] || [];
@@ -400,46 +429,48 @@ function reset() {
 }
 
 async function getuserParams() {
-    let response = await fetch("/user/params", { headers: { "Authorization": "Bearer " + window.sessionStorage.getItem("jwt") } });
-    let data = await handleErrors(response);
-    return data;
+    try {
+        let response = await fetch("/user/params", { headers: { "Authorization": "Bearer " + window.sessionStorage.getItem("jwt") } });
+        let data = await handleErrors(response).json();
+        return data;
+    } catch (error) {
+        console.error(error.message);
+    }
 }
 
-async function handleErrors(response) {
-    let jsonresponse;
-    jsonresponse = await response.json();
-    console.log(jsonresponse);
+function handleErrors(response) {
     if (!response.ok) {
-        alert(jsonresponse.detail);
-        throw Error(response.statusText);
+        throw Error(response.status + ' ' + response.statusText);
     }
-    return jsonresponse;
+    return response;
 }
 
 async function waitForKeyPress(len, status) {
+    let fingecoords = new Object();
     return new Promise(async resolve => {
         const onKeyDown = async event => {
             await mutex.lock();
-
-            console.log("este es event.key: ", event.key);
             if (len >= 1) {
                 showFinger(false);
             }
             dc.send(JSON.stringify({ key: event.key, status }));
             const data = await waitForMessage(dc);
             const msg = JSON.parse(data);
-            if ("error" in msg) {
+            if(msg == null){
+                alert("Verifique que las dos manos estén dentro del area de captura de la camra.");
+            }
+            else if ("error" in msg) {
                 alert(msg.error);
                 throw msg.error;
             } else {
-                console.log("este es msg.key: ", msg.key);
+                fingecoords[msg.key] = msg.coords;
                 initTyping(msg.key);
                 len--;
                 if (len === 0) {
                     document.removeEventListener("keydown", onKeyDown);
                     reset();
                     mutex.unlock();
-                    resolve();
+                    resolve(fingecoords);
                 } else {
                     mutex.unlock();
                 }
