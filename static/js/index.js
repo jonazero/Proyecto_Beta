@@ -13,7 +13,6 @@ const typingText = document.querySelector(".typing-text p"),
     selectors = [videoSelect],
     iiElement = document.getElementById("ii"),
     idElement = document.getElementById("id"),
-    spanElements = typingText.querySelectorAll("span"),
     fingerImages = {
         " ": ["../img/manos/1p.png", "../img/manos/2p.png"],
         "1": ["../img/manos/1m.png"],
@@ -47,6 +46,14 @@ const typingText = document.querySelector(".typing-text p"),
         ",": ["../img/manos/2med.png"],
         "k": ["../img/manos/2med.png"],
         "i": ["../img/manos/2med.png"],
+        "y": ["../img/manos/2i.png"],
+        "h": ["../img/manos/2i.png"],
+        "n": ["../img/manos/2i.png"],
+        "m": ["../img/manos/2i.png"],
+        "u": ["../img/manos/2i.png"],
+        "j": ["../img/manos/2i.png"],
+        "7": ["../img/manos/2i.png"],
+        "6": ["../img/manos/2i.png"],
     },
     mutex = {
         locked: false,
@@ -258,6 +265,7 @@ async function coordinate(stat) {
             Object.assign(benchmark_coords, await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 0)));
         }
         stat = 1;
+        sessionStorage.setItem('benchmark_coords', JSON.stringify(benchmark_coords))
     }
     else {
         stat = 1;
@@ -269,10 +277,18 @@ async function coordinate(stat) {
             Object.assign(camera_coords, await loadParagraph(paragraphs[index]).then(res => waitForKeyPress(res, 1)));
         }
         stat = 2;
+        sessionStorage.setItem('camera_coords', JSON.stringify(camera_coords))
     }
     if (stat === 2) {
         alert("Practice. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
-        console.log(getKeysWithDiffGreaterThanThreshold(camera_coords, benchmark_coords, 25));
+        if(Object.entries(benchmark_coords === 0)){
+            benchmark_coords = JSON.parse(sessionStorage.getItem("benchmark_coords"));
+        }
+        for (const key in benchmark_coords) {
+            console.log(key);
+        }
+        console.log(getKeysWithDiffGreaterThanThreshold(camera_coords, benchmark_coords, 6));
+        /*
         try {
             const response = await fetch("/words/", {
                 body: JSON.stringify({ letters: ["an", "es"], limit: 10 }),
@@ -285,6 +301,7 @@ async function coordinate(stat) {
         } catch (error) {
             console.error(error.message);
         }
+        */
     }
 }
 function getKeysWithDiffGreaterThanThreshold(keyboard1, keyboard2, threshold) {
@@ -295,6 +312,7 @@ function getKeysWithDiffGreaterThanThreshold(keyboard1, keyboard2, threshold) {
             const coords2 = keyboard2[key];
             const percentDiffX = Math.abs(coords1[0] - coords2[0]) / ((coords1[0] + coords2[0]) / 2) * 100;
             const percentDiffY = Math.abs(coords1[1] - coords2[1]) / ((coords1[1] + coords2[1]) / 2) * 100;
+            console.log("letra: ", key, " ", "coords1: ", coords1, "coords2: ", coords2, "x%: ", percentDiffX, "y%: ", percentDiffY);
             if (percentDiffX > threshold || percentDiffY > threshold) {
                 keysWithDiff.push(key);
             }
@@ -342,13 +360,21 @@ function loadParagraph(sentence) {
 }
 
 function showFinger(opt) {
+    const spanElements = typingText.querySelectorAll("span")
     const charIndexOffset = opt ? 0 : 1;
     const charElement = spanElements[charIndex + charIndexOffset];
+    if (!charElement) {
+        return;
+    }
     const cf = charElement.innerText.toLowerCase();
-    console.log(cf);
     const images = fingerImages[cf] || [];
-    iiElement.src = images[0] || "../img/manos/1.png";
-    idElement.src = images[1] || "../img/manos/2.png";
+    if (images[0].includes("1")) {
+        iiElement.src = images[0] || "../img/manos/1.png";
+        idElement.src = "../img/manos/2.png"
+    } else {
+        idElement.src = images[0] || "../img/manos/2.png";
+        iiElement.src = "../img/manos/1.png";
+    }
 }
 
 function playSound(id) {
@@ -456,7 +482,7 @@ async function waitForKeyPress(len, status) {
             dc.send(JSON.stringify({ key: event.key, status }));
             const data = await waitForMessage(dc);
             const msg = JSON.parse(data);
-            if(msg == null){
+            if (msg == null) {
                 alert("Verifique que las dos manos estén dentro del area de captura de la camra.");
             }
             else if ("error" in msg) {

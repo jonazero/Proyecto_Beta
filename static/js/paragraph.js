@@ -1,4 +1,3 @@
 var paragraphs = [
-    "grave.",
-    "otra."
+    "escribe la siguiente oracion fijate que ponzoña de whisky, exclamaba grave."
 ];
