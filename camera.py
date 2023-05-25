@@ -1,10 +1,12 @@
 from aiortc import MediaStreamTrack
 from av import VideoFrame
-from src.jsontools import json2dic, dic2json
+from src.jsontools import json2dic
 import mediapipe as mp
 import asyncio
 import cv2
 import numpy as np
+import time
+import datetime
 
 dim = (960, 720)
 mp_drawing = mp.solutions.drawing_utils
@@ -13,9 +15,17 @@ mp_drawing_styles = mp.solutions.drawing_styles
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=2,
-    min_detection_confidence=0.5, min_tracking_confidence=0.5, model_complexity=0)
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5,
+    model_complexity=1)
 
 dis = json2dic('./src/key_distribution.json')
+
+
+class FramewithTimestamp():
+    def __init__(self, frame, timestamp):
+        self.frame = frame
+        self.timestamo = timestamp
 
 
 class VideoTransformTrack(MediaStreamTrack):
@@ -26,9 +36,12 @@ class VideoTransformTrack(MediaStreamTrack):
         super().__init__()
         self.track = track
         self.transform = transform
+        self.frame = []
 
     async def recv(self):
         frame = await self.track.recv()
+        timestamp = int(time.time() * 1000)
+        self.frame.append(FramewithTimestamp(*frame, timestamp))
         img = frame.to_ndarray(format="bgr24")
         img = cv2.cvtColor(cv2.flip(img, 1), cv2.COLOR_BGR2RGB)
         if self.coords:
@@ -43,14 +56,14 @@ class VideoTransformTrack(MediaStreamTrack):
 
     async def get_delayed_frame(self):
         await asyncio.sleep(0.10)
-        frame = await self.track.recv()
-        return frame
+        return self.frame
 
-    async def set_keys(self, data, status):
-        frame = await self.get_delayed_frame()
+    async def set_keys(self, data, status, timestamp):
+        print(self.frame)
         frame = frame.to_ndarray(format="bgr24")
         frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+
         results = hands.process(frame)
         if results.multi_hand_landmarks:
             for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):

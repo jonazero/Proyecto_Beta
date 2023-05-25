@@ -9,7 +9,7 @@ from camera import VideoTransformTrack
 from models.dictionary import ArrayRequest, SentencesModel
 from models.user import UserParamsModel
 from jsonwt import get_current_user_params
-from database.db import  engine
+from database.db import engine
 from database.dict import query_database
 from models.dictionary import Base
 import json
@@ -56,10 +56,12 @@ async def get_words(data: ArrayRequest):
     words = [row[0] for row in rows]
     return JSONResponse(content={'words': words})
 
+
 @routes.post("/sentences/")
 async def generate_sentences(sentences: SentencesModel):
-    #generateSentences()
+    # generateSentences()
     return "hola"
+
 
 @routes.post("/offer_cv")
 async def offer(params: Offer):
@@ -77,8 +79,9 @@ async def offer(params: Offer):
             msg = json.loads(message)
             key = msg["key"]
             status = msg["status"]
+            timestamp = msg["timestamp"]
             if status == 0 or status == 1:
-                r = json.dumps(await stream.set_keys(key, status))
+                r = json.dumps(await stream.set_keys(key, status, timestamp))
                 print(r)
                 channel.send(r)
             else:

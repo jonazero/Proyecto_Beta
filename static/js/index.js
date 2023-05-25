@@ -281,13 +281,16 @@ async function coordinate(stat) {
     }
     if (stat === 2) {
         alert("Practice. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO")
-        if(Object.entries(benchmark_coords === 0)){
+        if (Object.entries(benchmark_coords === 0)) {
             benchmark_coords = JSON.parse(sessionStorage.getItem("benchmark_coords"));
         }
-        for (const key in benchmark_coords) {
-            console.log(key);
-        }
-        console.log(getKeysWithDiffGreaterThanThreshold(camera_coords, benchmark_coords, 6));
+        console.log(GetImportantKeys(camera_coords, benchmark_coords, 0.030));
+        console.log("h,g", euclideanDistance(camera_coords.h, camera_coords.g))
+        console.log("h,j", euclideanDistance(camera_coords.h, camera_coords.j))
+        console.log("h,y", euclideanDistance(camera_coords.h, camera_coords.y))
+        console.log("h,b", euclideanDistance(camera_coords.h, camera_coords.b))
+        console.log("h,n", euclideanDistance(camera_coords.h, camera_coords.n))
+
         /*
         try {
             const response = await fetch("/words/", {
@@ -304,22 +307,33 @@ async function coordinate(stat) {
         */
     }
 }
-function getKeysWithDiffGreaterThanThreshold(keyboard1, keyboard2, threshold) {
+function GetImportantKeys(camera_coords, benchmark_coords, threshold_percentage) {
     const keysWithDiff = [];
-    for (const key in keyboard1) {
-        if (keyboard2.hasOwnProperty(key)) {
-            const coords1 = keyboard1[key];
-            const coords2 = keyboard2[key];
-            const percentDiffX = Math.abs(coords1[0] - coords2[0]) / ((coords1[0] + coords2[0]) / 2) * 100;
-            const percentDiffY = Math.abs(coords1[1] - coords2[1]) / ((coords1[1] + coords2[1]) / 2) * 100;
-            console.log("letra: ", key, " ", "coords1: ", coords1, "coords2: ", coords2, "x%: ", percentDiffX, "y%: ", percentDiffY);
-            if (percentDiffX > threshold || percentDiffY > threshold) {
+    for (const key in camera_coords) {
+        if (benchmark_coords.hasOwnProperty(key)) {
+            const coords1 = camera_coords[key];
+            const coords2 = benchmark_coords[key];
+            distance = euclideanDistance(coords1, coords2);
+            //console.log(key, coords1, coords2, distance);
+            const totalDistance = euclideanDistance([0, 0], [100, 100]); // replace with actual total distance calculation
+            const threshold = threshold_percentage / 100 * totalDistance;
+            if (distance >= threshold) {
                 keysWithDiff.push(key);
             }
         }
     }
     return keysWithDiff;
 }
+
+
+function euclideanDistance(point1, point2) {
+    const deltaX = point2[0] - point1[0];
+    const deltaY = point2[1] - point1[1];
+    return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+}
+
+
+
 function stop() {
     // close data channel
     if (dc) {
@@ -475,13 +489,15 @@ async function waitForKeyPress(len, status) {
     let fingecoords = new Object();
     return new Promise(async resolve => {
         const onKeyDown = async event => {
-            await mutex.lock();
             if (len >= 1) {
                 showFinger(false);
             }
-            dc.send(JSON.stringify({ key: event.key, status }));
-            const data = await waitForMessage(dc);
-            const msg = JSON.parse(data);
+            initTyping(event.key);
+            const timestamp = Date.now()
+            dc.send(JSON.stringify({ key: event.key, status: status, timestamp: timestamp}));
+            const data = await waitForMessage(dc, event.key);
+            const msg = data;
+            console.log(msg);
             if (msg == null) {
                 alert("Verifique que las dos manos estén dentro del area de captura de la camra.");
             }
@@ -490,15 +506,11 @@ async function waitForKeyPress(len, status) {
                 throw msg.error;
             } else {
                 fingecoords[msg.key] = msg.coords;
-                initTyping(msg.key);
                 len--;
                 if (len === 0) {
                     document.removeEventListener("keydown", onKeyDown);
                     reset();
-                    mutex.unlock();
                     resolve(fingecoords);
-                } else {
-                    mutex.unlock();
                 }
             }
         };
@@ -506,11 +518,16 @@ async function waitForKeyPress(len, status) {
     });
 }
 
-function waitForMessage(dc) {
+function waitForMessage(dc, msgId) {
     return new Promise(resolve => {
-        dc.onmessage = event => {
-            resolve(event.data);
+        const handler = event => {
+            const msg = JSON.parse(event.data);
+            if (msg.key === msgId) {
+                dc.removeEventListener('message', handler);
+                resolve(msg);
+            }
         };
+        dc.addEventListener('message', handler);
     });
 }
 
