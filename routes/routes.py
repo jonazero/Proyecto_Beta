@@ -9,9 +9,9 @@ from camera import VideoTransformTrack
 from models.dictionary import ArrayRequest, SentencesModel
 from models.user import UserParamsModel
 from jsonwt import get_current_user_params
-from database.db import engine
-from database.dict import query_database
-from models.dictionary import Base
+#from database.db import engine
+#from database.dict import query_database
+#from models.dictionary import Base
 import json
 import asyncio
 import os
@@ -21,7 +21,7 @@ templates = Jinja2Templates(directory="templates")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_SECRET = os.getenv("GOOGLE_SECRET")
 pcs = set()
-Base.metadata.create_all(bind=engine)
+#Base.metadata.create_all(bind=engine)
 
 
 @routes.get("/", response_class=HTMLResponse)
