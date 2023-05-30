@@ -5,7 +5,7 @@ from starlette.templating import Jinja2Templates
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from src.schemas import Offer
 from aiortc.contrib.media import MediaRelay, MediaBlackhole
-from camera import VideoTransformTrack
+from camera import ImageProcessing
 from models.dictionary import ArrayRequest, SentencesModel
 from models.user import UserParamsModel
 from jsonwt import get_current_user_params
@@ -68,24 +68,25 @@ async def offer(params: Offer):
     offer = RTCSessionDescription(sdp=params.sdp, type=params.type)
     pc = RTCPeerConnection()
     pcs.add(pc)
-    recorder = MediaBlackhole()
-    relay = MediaRelay()
-    stream = None
-
     @ pc.on("datachannel")
     def on_datachannel(channel):
+        chunks = []
         @ channel.on("message")
         async def on_message(message):
-            msg = json.loads(message)
-            key = msg["key"]
-            status = msg["status"]
-            timestamp = msg["timestamp"]
-            if status == 0 or status == 1:
-                r = json.dumps(await stream.set_keys(key, status, timestamp))
-                print(r)
-                channel.send(r)
-            else:
-                print("caca")
+            jsonchunks = json.loads(message)
+            chunk = jsonchunks["chunk"]
+            totalchunks = jsonchunks["totalchunks"]
+            key = jsonchunks["key"]
+            if(chunk):
+                chunks.append(chunk)
+                if(len(chunks) == totalchunks):
+                    img_obj = ImageProcessing()
+                    img = img_obj.reconstructImage(chunks)
+                    results = img_obj.getKeyCoords(img, key)
+                    print(results)
+                    channel.send(json.dumps(results))
+                    chunks.clear()
+
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():
@@ -94,22 +95,8 @@ async def offer(params: Offer):
             await pc.close()
             pcs.discard(pc)
 
-    @ pc.on("track")
-    def on_track(track):
-        nonlocal stream
-        if track.kind == "video":
-            stream = VideoTransformTrack(relay.subscribe(
-                track), transform=params.video_transform)
-            pc.addTrack(stream)
-
-        @ track.on("ended")
-        async def on_ended():
-            await recorder.stop()
     await pc.setRemoteDescription(offer)
-    await recorder.start()
-
     answer = await pc.createAnswer()
-    await pc.setRemoteDescription(offer)
     await pc.setLocalDescription(answer)
     return {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
 
@@ -120,3 +107,4 @@ async def on_shutdown():
     coros = [pc.close() for pc in pcs]
     await asyncio.gather(*coros)
     pcs.clear()
+

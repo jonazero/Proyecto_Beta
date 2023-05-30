@@ -66,13 +66,15 @@ var timer,
   pc = null,
   dc = null,
   constraints = null,
-  currentStream;
+  currentStream,
+  canvas = document.createElement("canvas"),
+  context = canvas.getContext("2d");
 
 tryAgainBtn.addEventListener("click", reset);
 videoSelect.onchange = function () {
-  if (currentStream) {
+  if (videoElement.srcObject) {
     // Close the previous stream
-    currentStream.getTracks().forEach((track) => track.stop());
+    videoElement.srcObject.getTracks().forEach((track) => track.stop());
   }
   captureWebcam();
 };
@@ -106,14 +108,10 @@ function gotDevices(deviceInfos) {
 }
 function gotStream(stream) {
   // Close the previous stream if exists
-  if (currentStream) {
-    currentStream.getTracks().forEach((track) => track.stop());
+  if (videoElement.srcObject) {
+    videoElement.srcObject.getTracks().forEach((track) => track.stop());
   }
-
-  window.stream = stream; // make stream available to console
   videoElement.srcObject = stream;
-  currentStream = stream;
-
   // Refresh button list in case labels have become available
   return navigator.mediaDevices.enumerateDevices();
 }
@@ -199,7 +197,6 @@ async function start() {
     console.log("data channel created");
     captureWebcam();
   };
-
   coordinate(0);
 }
 
@@ -348,20 +345,6 @@ function stop() {
   }, 500);
 }
 
-function loadParagraph(sentence) {
-  return new Promise((resolve) => {
-    typingText.innerHTML = "";
-    sentence.split("").forEach((char) => {
-      let span = `<span>${char}</span>`;
-      typingText.innerHTML += span;
-    });
-    typingText.querySelectorAll("span")[0].classList.add("active");
-    typingText.addEventListener("click", () => inpField.focus());
-    resolve(sentence.length);
-    showFinger(true);
-  });
-}
-
 function showFinger(opt) {
   const spanElements = typingText.querySelectorAll("span");
   const charIndexOffset = opt ? 0 : 1;
@@ -481,24 +464,45 @@ function handleErrors(response) {
   return response;
 }
 
+function loadParagraph(sentence) {
+  return new Promise((resolve) => {
+    typingText.innerHTML = "";
+    sentence.split("").forEach((char) => {
+      let span = `<span>${char}</span>`;
+      typingText.innerHTML += span;
+    });
+    typingText.querySelectorAll("span")[0].classList.add("active");
+    typingText.addEventListener("click", () => inpField.focus());
+    resolve(sentence.length);
+    showFinger(true);
+  });
+}
+
 async function waitForKeyPress(len, status) {
   let fingecoords = new Object();
+  const CHUNK_SIZE = 16 * 1024; // Chunk size in bytes
+  let frameIndex = 0; // Index to track the current frame being sent
+  let chunks = []; // Array to store the chunks of the current frame
+  dc.onbufferedamountlow = sendNextChunk;
+
   return new Promise(async (resolve) => {
-    const onKeyDown = async (event) => {
+    const onKeyPress = async (event) => {
+      const frame = await captureFrame();
+      if (frame) {
+        splitFrameIntoChunks(frame, CHUNK_SIZE, status, event.key);
+        sendNextChunk();
+      }
       if (len >= 1) {
         showFinger(false);
       }
       initTyping(event.key);
-      const timestamp = Date.now();
-      dc.send(
-        JSON.stringify({ key: event.key, status: status, timestamp: timestamp })
-      );
+      //dc.send(JSON.stringify({ key: event.key, status: status }));
       const data = await waitForMessage(dc, event.key);
       const msg = data;
       console.log(msg);
       if (msg == null) {
         alert(
-          "Verifique que las dos manos estén dentro del area de captura de la camra."
+          "Verifique que las dos manos estén dentro del area de captura de la camara."
         );
       } else if ("error" in msg) {
         alert(msg.error);
@@ -507,14 +511,58 @@ async function waitForKeyPress(len, status) {
         fingecoords[msg.key] = msg.coords;
         len--;
         if (len === 0) {
-          document.removeEventListener("keydown", onKeyDown);
+          document.removeEventListener("keypress", onKeyPress);
           reset();
           resolve(fingecoords);
         }
       }
     };
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keypress", onKeyPress);
   });
+  function sendNextChunk() {
+    if (frameIndex >= chunks.length) {
+      frameIndex = 0;
+      chunks = [];
+    } else {
+      const chunk = chunks[frameIndex];
+      dc.send(chunk);
+      frameIndex++;
+    }
+  }
+
+  function captureFrame() {
+    return new Promise((resolve, reject) => {
+      var video = videoElement;
+      // Set the canvas dimensions to match the video dimensions
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      delay = document.getElementById("inputValue").value;
+      setTimeout(function () {
+        // Draw the current video frame onto the canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Get the image data from the canvas
+        var imageData = canvas.toDataURL("image/jpeg");
+        resolve(imageData);
+      }, delay);
+    });
+  }
+
+  function splitFrameIntoChunks(frame, CHUNK_SIZE, status, key) {
+    const totalchunks = Math.ceil(frame.length / CHUNK_SIZE);
+    for (let i = 0; i < totalchunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = start + CHUNK_SIZE;
+      const chunk = frame.slice(start, end);
+      const chunkData = {
+        chunk: chunk,
+        totalchunks: totalchunks,
+        status: status,
+        key: key,
+      };
+      const jsonChunk = JSON.stringify(chunkData);
+      chunks.push(jsonChunk);
+    }
+  }
 }
 
 function waitForMessage(dc, msgId) {
@@ -522,7 +570,7 @@ function waitForMessage(dc, msgId) {
     const handler = (event) => {
       const msg = JSON.parse(event.data);
       if (msg.key === msgId) {
-        dc.removeEventListener("message", handler);
+        //dc.removeEventListener("message", handler);
         resolve(msg);
       }
     };

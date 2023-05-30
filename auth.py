@@ -76,8 +76,7 @@ async def auth(request: Request):
         access_token = await oauth.google.authorize_access_token(request)
     except OAuthError:
         raise CREDENTIALS_EXCEPTION
-    user_data = await oauth.google.parse_id_token(request, access_token)
-    print("este es use data: ", user_data)
+    user_data = access_token['userinfo']
     if get_by_email(user_data["email"]):
         return JSONResponse({
             'result': True,
