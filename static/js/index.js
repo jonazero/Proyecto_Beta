@@ -12,7 +12,10 @@ const typingText = document.querySelector(".typing-text p"),
   audioElements = document.querySelectorAll('audio[id^="sound-"]'),
   selectors = [videoSelect],
   iiElement = document.getElementById("ii"),
+  spinwrap = document.querySelector(".page-wrapper"),  
   idElement = document.getElementById("id"),
+  fliphor = document.getElementById("btn-flip-hor"),
+  flipver = document.getElementById("btn-flip-ver"),
   fingerImages = {
     " ": ["../img/manos/1p.png", "../img/manos/2p.png"],
     1: ["../img/manos/1m.png"],
@@ -62,6 +65,10 @@ var timer,
   charIndex = (mistakes = isTyping = 0),
   mainNav = document.getElementById("main-nav"),
   navbarToggle = document.getElementById("navbar-toggle"),
+  container = document.getElementById("container"),
+  delayinput = document.getElementById("inputValue"),
+  btncontainer = document.getElementById("buttonContainer"),
+  capturedImageElement = document.getElementById("capturedImage"),
   generatedpan = "",
   pc = null,
   dc = null,
@@ -69,6 +76,21 @@ var timer,
   currentStream,
   canvas = document.createElement("canvas"),
   context = canvas.getContext("2d");
+
+
+delayinput.onchange = function () {
+  inpField.focus();
+};
+
+fliphor.addEventListener("click", function() {
+  videoElement.classList.toggle('flipped-x');
+  capturedImageElement.classList.toggle('flipped-x');
+})
+
+flipver.addEventListener("click", function(){
+  videoElement.classList.toggle('flipped-y');
+  capturedImageElement.classList.toggle('flipped-y');
+})
 
 tryAgainBtn.addEventListener("click", reset);
 videoSelect.onchange = function () {
@@ -78,6 +100,7 @@ videoSelect.onchange = function () {
   }
   captureWebcam();
 };
+
 
 function gotDevices(deviceInfos) {
   // Handles being called several times to update labels. Preserve values.
@@ -106,12 +129,15 @@ function gotDevices(deviceInfos) {
     }
   });
 }
+
 function gotStream(stream) {
   // Close the previous stream if exists
   if (videoElement.srcObject) {
     videoElement.srcObject.getTracks().forEach((track) => track.stop());
   }
   videoElement.srcObject = stream;
+  btncontainer.style.display = "block";
+  //videoElement.style.transform = "scaleX(-1)";
   // Refresh button list in case labels have become available
   return navigator.mediaDevices.enumerateDevices();
 }
@@ -196,8 +222,8 @@ async function start() {
   dc.onopen = function () {
     console.log("data channel created");
     captureWebcam();
+    coordinate(0);
   };
-  coordinate(0);
 }
 
 function captureWebcam() {
@@ -229,6 +255,9 @@ async function coordinate(stat) {
     alert(
       "Benchmark. \nPor favor escribe las siguientes oraciones para que el sistema determine tu desempeño."
     );
+    spinwrap.style.display = "none";
+    inpField.style.display = "block";
+    container.style.display = "flex";
     sessionStorage.setItem("first", "false");
     for (let index = 0; index < paragraphs.length; index++) {
       Object.assign(
@@ -465,6 +494,11 @@ function handleErrors(response) {
 }
 
 function loadParagraph(sentence) {
+  spinwrap.style.display = "none";
+  inpField.style.display = "block";
+  container.style.display = "flex";
+  videoElement.style.display = "block";
+  capturedImageElement.style.display = "none";
   return new Promise((resolve) => {
     typingText.innerHTML = "";
     sentence.split("").forEach((char) => {
@@ -536,12 +570,15 @@ async function waitForKeyPress(len, status) {
       // Set the canvas dimensions to match the video dimensions
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      delay = document.getElementById("inputValue").value;
+      delay = delayinput.value;
       setTimeout(function () {
         // Draw the current video frame onto the canvas
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         // Get the image data from the canvas
         var imageData = canvas.toDataURL("image/jpeg");
+        capturedImageElement.src = imageData;
+        capturedImageElement.style.display = "block";
+        videoElement.style.display = "none";
         resolve(imageData);
       }, delay);
     });

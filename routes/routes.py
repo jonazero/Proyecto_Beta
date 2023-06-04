@@ -15,6 +15,7 @@ from jsonwt import get_current_user_params
 import json
 import asyncio
 import os
+import cv2
 
 routes = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -82,8 +83,9 @@ async def offer(params: Offer):
                 if(len(chunks) == totalchunks):
                     img_obj = ImageProcessing()
                     img = img_obj.reconstructImage(chunks)
+                    cv2.imshow("Image", img)
+                    cv2.waitKey(1)
                     results = img_obj.getKeyCoords(img, key)
-                    print(results)
                     channel.send(json.dumps(results))
                     chunks.clear()
 

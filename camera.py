@@ -20,6 +20,7 @@ class ImageProcessing():
         image_array = np.frombuffer(decoded_data, dtype=np.uint8)
         image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.flip(image, -1)
         return image
 
     def getMediapipeResults(self, image):
