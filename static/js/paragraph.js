@@ -1,3 +1,3 @@
-var paragraphs = [
-    "fijate que ponzoña de whisky exclamaba grave."
-];
+var paragraphs = ["fijate", 
+"fijate", 
+"fijate"];

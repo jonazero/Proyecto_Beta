@@ -61,7 +61,6 @@ body {
 }
 
 @media screen and (min-width: 768px) {
-
     .navbar {
         display: flex;
         justify-content: space-between;
@@ -95,24 +94,17 @@ body {
 
 }
 
-
-@media (max-width: 745px) {
-    .waves {
-        height: 17vw;
-    }
-
-}
-
 .header {
-    margin-top: 13rem;
     font-size: 25px;
-    position: relative;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     text-align: center;
     color: white;
 }
 
 .inner-header {
-    height: 25.0vh;
     width: 100%;
     margin: 0;
     padding: 0;
@@ -181,7 +173,7 @@ body {
 
 span {
     border-right: .05em solid;
-    animation: caret 1s steps(1) infinite;
+    animation: caret 1 steps(1) infinite;
 }
 
 @keyframes caret {
@@ -192,6 +184,7 @@ span {
 
 .button-36 {
     width: 100px;
+    margin-top: 5%;
     background-color: rgba(0, 0, 0, 0.103);
     border-radius: 8px;
     border-style: double;
@@ -215,4 +208,46 @@ span {
 .button-36:hover {
     box-shadow: rgba(0, 0, 0, 0.411) 0 1px 30px;
     transition-duration: .1s;
+}
+
+@media (max-width: 745px) {
+    .button-36{
+        width: 60px;
+        height: 2rem;
+        font-size: 12px;
+        padding: 0 0.8rem;
+    }
+    .header{
+        font-size: 10px;
+        position: fixed;
+        text-align: center;
+        color: white;
+        top: 50%;
+        left: 50%;
+    }
+    .waves {
+        height: 20vh;
+    }
+
+}
+
+@media (max-height: 450px) {
+    .button-36{
+        width: 60px;
+        height: 2rem;
+        font-size: 12px;
+        padding: 0 0.8rem;
+    }
+    .header{
+        font-size: 10px;
+        position: fixed;
+        text-align: center;
+        color: white;
+        top: 50%;
+        left: 50%;
+    }
+    .waves {
+        height: 20vh;
+    }
+
 }

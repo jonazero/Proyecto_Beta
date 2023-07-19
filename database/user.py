@@ -33,6 +33,7 @@ def get_by_email(email: str):
         if response["Items"]:
             return response["Items"][0]
     except ClientError as e:
+        print(e)
         return JSONResponse(content=e.response["Error"], status_code=500)
 
 

@@ -12,7 +12,7 @@ const typingText = document.querySelector(".typing-text p"),
   audioElements = document.querySelectorAll('audio[id^="sound-"]'),
   selectors = [videoSelect],
   iiElement = document.getElementById("ii"),
-  spinwrap = document.querySelector(".page-wrapper"),  
+  spinwrap = document.querySelector(".page-wrapper"),
   idElement = document.getElementById("id"),
   fliphor = document.getElementById("btn-flip-hor"),
   flipver = document.getElementById("btn-flip-ver"),
@@ -77,30 +77,43 @@ var timer,
   canvas = document.createElement("canvas"),
   context = canvas.getContext("2d");
 
-
 delayinput.onchange = function () {
   inpField.focus();
 };
 
-fliphor.addEventListener("click", function() {
-  videoElement.classList.toggle('flipped-x');
-  capturedImageElement.classList.toggle('flipped-x');
-})
+navbarToggle.addEventListener("click", function () {
+  if (this.classList.contains("active")) {
+    mainNav.style.display = "none";
+    this.classList.remove("active");
+  } else {
+    mainNav.style.display = "flex";
+    this.classList.add("active");
+  }
+});
+fliphor.addEventListener("click", function () {
+  inpField.focus();
+  videoElement.classList.toggle("flipped-x");
+  capturedImageElement.classList.toggle("flipped-x");
+});
 
-flipver.addEventListener("click", function(){
-  videoElement.classList.toggle('flipped-y');
-  capturedImageElement.classList.toggle('flipped-y');
-})
+flipver.addEventListener("click", function () {
+  inpField.focus();
+  videoElement.classList.toggle("flipped-y");
+  capturedImageElement.classList.toggle("flipped-y");
+});
 
 tryAgainBtn.addEventListener("click", reset);
 videoSelect.onchange = function () {
+  capturedImageElement.style.display = "none";
+  videoElement.style.display = "block";
+  inpField.focus();
   if (videoElement.srcObject) {
     // Close the previous stream
     videoElement.srcObject.getTracks().forEach((track) => track.stop());
   }
+  localStorage.setItem("videoSource", videoSelect.value);
   captureWebcam();
 };
-
 
 function gotDevices(deviceInfos) {
   // Handles being called several times to update labels. Preserve values.
@@ -128,6 +141,10 @@ function gotDevices(deviceInfos) {
       select.value = values[selectorIndex];
     }
   });
+  vs = localStorage.getItem("videoSource");
+  if (vs) {
+    videoSelect.value = vs;
+  }
 }
 
 function gotStream(stream) {
@@ -216,7 +233,7 @@ async function negotiate() {
 
 async function start() {
   pc = createPeerConnection();
-  dc = pc.createDataChannel("chat");
+  dc = pc.createDataChannel("chat", { ordered: false });
   negotiate();
   dc.onclose = () => console.log("data channel closed");
   dc.onopen = function () {
@@ -227,14 +244,18 @@ async function start() {
 }
 
 function captureWebcam() {
-  constraints = {
+  let vs = localStorage.getItem("videoSource");
+  let constraints = {
     audio: false,
     video: {
-      deviceId: videoSelect.value,
       width: { min: 900, max: 1920 },
       height: { min: 700, max: 1080 },
     },
   };
+
+  if (vs) {
+    constraints.video.deviceId = vs;
+  }
   if (constraints.video) {
     navigator.mediaDevices
       .getUserMedia(constraints)
@@ -253,20 +274,16 @@ async function coordinate(stat) {
   user_params = await getuserParams();
   if (first === "true" && stat === 0) {
     alert(
-      "Benchmark. \nPor favor escribe las siguientes oraciones para que el sistema determine tu desempeño."
+      "Por favor escribe la oracion para que el sistema analice tu modo de escritura."
     );
     spinwrap.style.display = "none";
     inpField.style.display = "block";
     container.style.display = "flex";
     sessionStorage.setItem("first", "false");
-    for (let index = 0; index < paragraphs.length; index++) {
-      Object.assign(
-        benchmark_coords,
-        await loadParagraph(paragraphs[index]).then((res) =>
-          waitForKeyPress(res, 0)
-        )
-      );
-    }
+    Object.assign(
+      benchmark_coords,
+      await loadParagraph(paragraphs[0]).then((res) => waitForKeyPress(res, 0))
+    );
     stat = 1;
     sessionStorage.setItem(
       "benchmark_coords",
@@ -277,17 +294,25 @@ async function coordinate(stat) {
   }
   if (stat === 1) {
     alert(
-      "Camera. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO"
+      "Por favor escribe las siguientes oraciones con los dedos que se indican. \nEVITA HACERLO DEMASIADO RAPIDO"
     );
     hands.style.display = "flex";
     for (let index = 0; index < paragraphs.length; index++) {
-      Object.assign(
-        camera_coords,
-        await loadParagraph(paragraphs[index]).then((res) =>
-          waitForKeyPress(res, 1)
-        )
+      resp = await loadParagraph(paragraphs[index]).then((res) =>
+        waitForKeyPress(res, 1)
       );
+      Object.keys(resp).forEach((key) => {
+        if(camera_coords[key] && camera_coords[key].length > 0){
+          camera_coords[key] = resp[key].concat(camera_coords[key]);
+        }else{
+          camera_coords[key] = resp[key];
+        }
+      });
     }
+    const bandera = {msg: 1};
+    dc.send(JSON.stringify(bandera));
+    console.log(await waitForMessage(dc, 1));
+    console.log(camera_coords);
     stat = 2;
     sessionStorage.setItem("camera_coords", JSON.stringify(camera_coords));
   }
@@ -298,44 +323,33 @@ async function coordinate(stat) {
     if (Object.entries(benchmark_coords === 0)) {
       benchmark_coords = JSON.parse(sessionStorage.getItem("benchmark_coords"));
     }
-    console.log(GetImportantKeys(camera_coords, benchmark_coords, 0.03));
-    console.log("h,g", euclideanDistance(camera_coords.h, camera_coords.g));
-    console.log("h,j", euclideanDistance(camera_coords.h, camera_coords.j));
-    console.log("h,y", euclideanDistance(camera_coords.h, camera_coords.y));
-    console.log("h,b", euclideanDistance(camera_coords.h, camera_coords.b));
-    console.log("h,n", euclideanDistance(camera_coords.h, camera_coords.n));
-
+    await loadParagraph(paragraphs[0]).then((res) => waitForKeyPress(res, 2));
+    const bandera = {msg: 2};
+    dc.send(JSON.stringify(bandera));
     /*
-        try {
-            const response = await fetch("/words/", {
-                body: JSON.stringify({ letters: ["an", "es"], limit: 10 }),
-                headers: { "Content-type": "application/json;charset=UTF-8" },
-                method: "POST"
-            });
-            const data = await handleErrors(response).json();
-            const words = data.words;
-            console.log(words);
-        } catch (error) {
-            console.error(error.message);
-        }
-        */
+    try {
+      const response = await fetch("/words/", {
+        body: JSON.stringify({ letters: ["an", "es"], limit: 10 }),
+        headers: { "Content-type": "application/json;charset=UTF-8" },
+        method: "POST",
+      });
+      const data = await handleErrors(response).json();
+      const words = data.words;
+      console.log(words);
+    } catch (error) {
+      console.error(error.message);
+    }
+    */
   }
 }
-function GetImportantKeys(
-  camera_coords,
-  benchmark_coords,
-  threshold_percentage
-) {
+function GetImportantKeys(camera_coords, benchmark_coords, maxdistane) {
   const keysWithDiff = [];
   for (const key in camera_coords) {
     if (benchmark_coords.hasOwnProperty(key)) {
       const coords1 = camera_coords[key];
       const coords2 = benchmark_coords[key];
       distance = euclideanDistance(coords1, coords2);
-      //console.log(key, coords1, coords2, distance);
-      const totalDistance = euclideanDistance([0, 0], [100, 100]); // replace with actual total distance calculation
-      const threshold = (threshold_percentage / 100) * totalDistance;
-      if (distance >= threshold) {
+      if (distance >= maxdistane) {
         keysWithDiff.push(key);
       }
     }
@@ -513,36 +527,46 @@ function loadParagraph(sentence) {
 }
 
 async function waitForKeyPress(len, status) {
-  let fingecoords = new Object();
+  let fingecoords = {};
   const CHUNK_SIZE = 16 * 1024; // Chunk size in bytes
   let frameIndex = 0; // Index to track the current frame being sent
   let chunks = []; // Array to store the chunks of the current frame
-  dc.onbufferedamountlow = sendNextChunk;
-
+  let characters = typingText.querySelectorAll("span");
+  let error = false;
+  let index = charIndex;
+  //dc.onbufferedamountlow = sendNextChunk;
   return new Promise(async (resolve) => {
     const onKeyPress = async (event) => {
       const frame = await captureFrame();
       if (frame) {
         splitFrameIntoChunks(frame, CHUNK_SIZE, status, event.key);
-        sendNextChunk();
+        for (i = 0; i <= chunks.length; i++) {
+          sendNextChunk();
+        }
       }
       if (len >= 1) {
         showFinger(false);
       }
       initTyping(event.key);
-      //dc.send(JSON.stringify({ key: event.key, status: status }));
-      const data = await waitForMessage(dc, event.key);
-      const msg = data;
-      console.log(msg);
-      if (msg == null) {
-        alert(
-          "Verifique que las dos manos estén dentro del area de captura de la camara."
-        );
-      } else if ("error" in msg) {
-        alert(msg.error);
-        throw msg.error;
+      const msg = await waitForMessage(dc, event.key);
+      if ("error" in msg) {
+        error = true;
+        while (
+          characters[charIndex].innerText !== characters[index].innerText
+        ) {
+          characters[charIndex].classList = [];
+          charIndex--;
+        }
+        if (characters[charIndex].classList.contains("incorrect")) {
+          characters[charIndex].classList.replace("incorrect", "active");
+        }
+        if (characters[charIndex].classList.contains("correct")) {
+          characters[charIndex].classList.replace("correct", "active");
+        }
       } else {
-        fingecoords[msg.key] = msg.coords;
+        index++;
+        error = false;
+        agregarTecla(msg.key, msg.coords);
         len--;
         if (len === 0) {
           document.removeEventListener("keypress", onKeyPress);
@@ -553,6 +577,7 @@ async function waitForKeyPress(len, status) {
     };
     document.addEventListener("keypress", onKeyPress);
   });
+
   function sendNextChunk() {
     if (frameIndex >= chunks.length) {
       frameIndex = 0;
@@ -595,22 +620,37 @@ async function waitForKeyPress(len, status) {
         totalchunks: totalchunks,
         status: status,
         key: key,
+        index: charIndex,
       };
       const jsonChunk = JSON.stringify(chunkData);
       chunks.push(jsonChunk);
     }
   }
+
+  // Agregar una tecla y sus coordenadas al objeto
+  function agregarTecla(tecla, coordenadas) {
+    if (fingecoords[tecla]) {
+      fingecoords[tecla].push(coordenadas);
+    } else {
+      fingecoords[tecla] = [coordenadas];
+    }
+  }
 }
 
 function waitForMessage(dc, msgId) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const handler = (event) => {
       const msg = JSON.parse(event.data);
       if (msg.key === msgId) {
         //dc.removeEventListener("message", handler);
+        console.log("llegue");
+        resolve(msg);
+      }else if (msg.msg === msgId){
+        console.log("cacurnio");
         resolve(msg);
       }
     };
+
     dc.addEventListener("message", handler);
   });
 }

@@ -1,31 +1,15 @@
 from boto3 import resource
 from os import getenv
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from dotenv import load_dotenv
 
 load_dotenv()
-SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL.format(
-        user=getenv("AWS_MYSQL_USERNAME"),
-        password=getenv("AWS_MYSQL_PWD"),
-        host=getenv("AWS_MYSQL_HOST"),
-        port="3306",
-        database=getenv("AWS_MYSQL_DB"),
-    )
-)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-
 dynamodb = resource("dynamodb",
+                    region_name=getenv("REGION_NAME"),
                     aws_access_key_id=getenv("AWS_ACCESS_KEY_ID"),
-                    aws_secret_access_key=getenv("AWS_SECRET_ACCESS_KEY"),
-                    region_name=getenv("REGION_NAME"))
-
+                    aws_secret_access_key=getenv("AWS_SECRET_ACCESS_KEY"))
 
 tables = [
     {
@@ -66,3 +50,17 @@ def create_tables():
             )
     except Exception as e:
         print(e)
+
+def add_user(id, created_at):
+    table = dynamodb.Table('users')
+    
+    response = table.put_item(
+        Item={
+            'id': id,
+            'created_at': created_at
+        }
+    )
+    
+    return response
+
+add_user("1", "11/05/1996")
