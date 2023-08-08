@@ -16,6 +16,7 @@ const typingText = document.querySelector(".typing-text p"),
   idElement = document.getElementById("id"),
   fliphor = document.getElementById("btn-flip-hor"),
   flipver = document.getElementById("btn-flip-ver"),
+  notifications = document.querySelector(".notifications"),
   fingerImages = {
     " ": ["../img/manos/1p.png", "../img/manos/2p.png"],
     1: ["../img/manos/1m.png"],
@@ -58,7 +59,6 @@ const typingText = document.querySelector(".typing-text p"),
     7: ["../img/manos/2i.png"],
     6: ["../img/manos/2i.png"],
   };
-
 var timer,
   maxTime = 600,
   timeLeft = maxTime,
@@ -269,8 +269,7 @@ async function coordinate(stat) {
   first = sessionStorage.getItem("first");
   let benchmark_coords = new Object(),
     practice_coords = new Object(),
-    camera_coords = new Object(),
-    user_params = new Object();
+    camera_coords = new Object();
   user_params = await getuserParams();
   if (first === "true" && stat === 0) {
     alert(
@@ -280,15 +279,17 @@ async function coordinate(stat) {
     inpField.style.display = "block";
     container.style.display = "flex";
     sessionStorage.setItem("first", "false");
-    Object.assign(
-      benchmark_coords,
-      await loadParagraph(paragraphs[0]).then((res) => waitForKeyPress(res, 0))
+    const resp = await loadParagraph(paragraphs[0]).then((res) =>
+      waitForKeyPress(res, 0)
     );
+    console.log("este es resp: ", resp);
+    Object.assign(benchmark_coords, resp);
     stat = 1;
     sessionStorage.setItem(
       "benchmark_coords",
       JSON.stringify(benchmark_coords)
     );
+    console.log(benchmark_coords);
   } else {
     stat = 1;
   }
@@ -302,21 +303,27 @@ async function coordinate(stat) {
         waitForKeyPress(res, 1)
       );
       Object.keys(resp).forEach((key) => {
-        if(camera_coords[key] && camera_coords[key].length > 0){
+        if (camera_coords[key] && camera_coords[key].length > 0) {
           camera_coords[key] = resp[key].concat(camera_coords[key]);
-        }else{
+        } else {
           camera_coords[key] = resp[key];
         }
       });
     }
-    const bandera = {msg: 1};
-    dc.send(JSON.stringify(bandera));
-    console.log(await waitForMessage(dc, 1));
-    console.log(camera_coords);
     stat = 2;
+    console.log(camera_coords);
     sessionStorage.setItem("camera_coords", JSON.stringify(camera_coords));
   }
   if (stat === 2) {
+    dc.send(
+      JSON.stringify({
+        flag: 1,
+        benchmark_keys: benchmark_coords,
+        camera_keys: camera_coords,
+      })
+    );
+    wrongchars = await waitForMessage(dc, 1);
+    console.log(camera_coords);
     alert(
       "Practice. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO"
     );
@@ -324,8 +331,7 @@ async function coordinate(stat) {
       benchmark_coords = JSON.parse(sessionStorage.getItem("benchmark_coords"));
     }
     await loadParagraph(paragraphs[0]).then((res) => waitForKeyPress(res, 2));
-    const bandera = {msg: 2};
-    dc.send(JSON.stringify(bandera));
+
     /*
     try {
       const response = await fetch("/words/", {
@@ -532,14 +538,16 @@ async function waitForKeyPress(len, status) {
   let frameIndex = 0; // Index to track the current frame being sent
   let chunks = []; // Array to store the chunks of the current frame
   let characters = typingText.querySelectorAll("span");
-  let error = false;
   let index = charIndex;
+  let words = [];
   //dc.onbufferedamountlow = sendNextChunk;
   return new Promise(async (resolve) => {
     const onKeyPress = async (event) => {
+      const time = Date.now();
+      words.push({key: event.key, time: time});
       const frame = await captureFrame();
       if (frame) {
-        splitFrameIntoChunks(frame, CHUNK_SIZE, status, event.key);
+        splitFrameIntoChunks(frame, CHUNK_SIZE, status, event.key, time);
         for (i = 0; i <= chunks.length; i++) {
           sendNextChunk();
         }
@@ -550,6 +558,8 @@ async function waitForKeyPress(len, status) {
       initTyping(event.key);
       const msg = await waitForMessage(dc, event.key);
       if ("error" in msg) {
+        createToast("error", msg["error"]);
+        console.log(msg["error"]);
         error = true;
         while (
           characters[charIndex].innerText !== characters[index].innerText
@@ -566,14 +576,15 @@ async function waitForKeyPress(len, status) {
       } else {
         index++;
         error = false;
-        agregarTecla(msg.key, msg.coords);
+        agregarTecla(msg.key, msg.coords, time);
         len--;
         if (len === 0) {
           document.removeEventListener("keypress", onKeyPress);
           reset();
-          resolve(fingecoords);
+          resolve(fingecoords, words);
         }
       }
+      showFinger(true);
     };
     document.addEventListener("keypress", onKeyPress);
   });
@@ -609,7 +620,7 @@ async function waitForKeyPress(len, status) {
     });
   }
 
-  function splitFrameIntoChunks(frame, CHUNK_SIZE, status, key) {
+  function splitFrameIntoChunks(frame, CHUNK_SIZE, status, key, time) {
     const totalchunks = Math.ceil(frame.length / CHUNK_SIZE);
     for (let i = 0; i < totalchunks; i++) {
       const start = i * CHUNK_SIZE;
@@ -621,6 +632,7 @@ async function waitForKeyPress(len, status) {
         status: status,
         key: key,
         index: charIndex,
+        time: time,
       };
       const jsonChunk = JSON.stringify(chunkData);
       chunks.push(jsonChunk);
@@ -628,11 +640,11 @@ async function waitForKeyPress(len, status) {
   }
 
   // Agregar una tecla y sus coordenadas al objeto
-  function agregarTecla(tecla, coordenadas) {
+  function agregarTecla(tecla, coordenadas, time) {
     if (fingecoords[tecla]) {
-      fingecoords[tecla].push(coordenadas);
+      fingecoords[tecla].push({ coordenadas, time });
     } else {
-      fingecoords[tecla] = [coordenadas];
+      fingecoords[tecla] = [{ coordenadas, time }];
     }
   }
 }
@@ -642,11 +654,10 @@ function waitForMessage(dc, msgId) {
     const handler = (event) => {
       const msg = JSON.parse(event.data);
       if (msg.key === msgId) {
-        //dc.removeEventListener("message", handler);
-        console.log("llegue");
+        dc.removeEventListener("message", handler);
         resolve(msg);
-      }else if (msg.msg === msgId){
-        console.log("cacurnio");
+      }
+      if ("flag" in msg) {
         resolve(msg);
       }
     };
@@ -654,3 +665,41 @@ function waitForMessage(dc, msgId) {
     dc.addEventListener("message", handler);
   });
 }
+
+const toastDetails = {
+  timer: 2000,
+  success: {
+    icon: "fa-circle-check",
+  },
+  error: {
+    icon: "fa-circle-xmark",
+  },
+  warning: {
+    icon: "fa-triangle-exclamation",
+  },
+  info: {
+    icon: "fa-circle-info",
+  },
+};
+
+const removeToast = (toast) => {
+  toast.classList.add("hide");
+  if (toast.timeoutId) clearTimeout(toast.timeoutId); // Clearing the timeout for the toast
+  setTimeout(() => toast.remove(), 2000); // Removing the toast after 500ms
+};
+
+const createToast = (id, text) => {
+  // Getting the icon and text for the toast based on the id passed
+  const icon = toastDetails[id];
+  const toast = document.createElement("li"); // Creating a new 'li' element for the toast
+  toast.className = `toast ${id}`; // Setting the classes for the toast
+  // Setting the inner HTML for the toast
+  toast.innerHTML = `<div class="column">
+                       <i class="fa-solid ${icon}"></i>
+                       <span>${text}</span>
+                    </div>
+                    <i class="fa-solid fa-xmark" onclick="removeToast(this.parentElement)"></i>`;
+  notifications.appendChild(toast); // Append the toast to the notification ul
+  // Setting a timeout to remove the toast after the specified duration
+  toast.timeoutId = setTimeout(() => removeToast(toast), toastDetails.timer);
+};

@@ -4,15 +4,16 @@ import cv2
 import os
 from src.jsontools import json2dic
 from mediapipe.python.solutions import hands as mp_hands
+
+
 class ImageProcessing():
     def __init__(self) -> None:
-        self.mp_hands = mp_hands.Hands(static_image_mode=False, 
-                                       max_num_hands=2, 
-                                       min_detection_confidence=0.5, 
-                                       min_tracking_confidence=0.5, 
+        self.mp_hands = mp_hands.Hands(static_image_mode=False,
+                                       max_num_hands=2,
+                                       min_detection_confidence=0.5,
+                                       min_tracking_confidence=0.5,
                                        model_complexity=1)
         self.key_distribution = json2dic("src/querty.json")
-    
 
     def reconstructImage(self, chunks):
         try:
@@ -34,30 +35,25 @@ class ImageProcessing():
             return results
         except Exception as e:
             print(f"Error during Mediapipe processing: {e}")
-            return None
-    
-    def getKeyCoords(self, image, key):
-        try:
-            results = self.getMediapipeResults(image)
-            if results.multi_hand_landmarks:
-                for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
-                    mano = results.multi_handedness[idx].classification[0].label
-                    if key in self.key_distribution[mano]:
-                        key_coord = {"key": key, "coords": [hand_landmarks.landmark[self.key_distribution[mano][key]].x, hand_landmarks.landmark[self.key_distribution[mano][key]].y]}
+            return {"error": e}
+
+    def getKeyCoords(self, image, key, time):
+        results = self.getMediapipeResults(image)
+        if results.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                mano = results.multi_handedness[idx].classification[0].label
+                if key in self.key_distribution[mano]:
+                    key_coord = {"key": key,
+                                 "coords": [hand_landmarks.landmark[self.key_distribution[mano][key]].x,
+                                            hand_landmarks.landmark[self.key_distribution[mano][key]].y],
+                                 "time": time}
+                    if key_coord:
                         return key_coord
-            else:
-                message = {"key": key, "error": "El sistema no pudo identificar las manos. Por favor verifique que la cámara esté enfocando el teclado."}
-                return message
-        except Exception as e:
-            message = {"key": key, "error": "Error al momento de capturar las coordenadas"}
+                    else:
+                        message = {
+                            "key": key, "error": "El sistema no pudo identificar las manos. Por favor verifique que la cámara esté enfocando el teclado."}
+                        return message
+        else:
+            message = {
+                "key": key, "error": "El sistema no pudo identificar las manos. Por favor verifique que la cámara esté enfocando el teclado."}
             return message
-
-    
-
-
-
-
-
-
-
-

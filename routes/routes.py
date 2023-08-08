@@ -69,18 +69,37 @@ async def offer(params: Offer):
         kd = set()
         img_obj = ImageProcessing()
         knn_obj = KNN()
-        keysfirst = {}
-        keysecond = {}
-        practice_char = []
         @ channel.on("message")
         async def on_message(message):
             nonlocal kd
             jsonchunks = json.loads(message)
-            if ("msg" in jsonchunks):
-                if (jsonchunks["msg"] == 1):
+            if ("flag" in jsonchunks):
+                if (jsonchunks["flag"] == 1):
+                    benchmark_keys =  jsonchunks["benchmark_keys"]
+                    camera_keys = jsonchunks["camera_keys"]
+                    practice_char = []
                     X_train = []
                     y_train = []
                     X_test = []
+                    for label, samples in camera_keys.items():
+                        coords = [sample['coordenadas'] for sample in samples]
+                        X_train.extend(coords)
+                        y_train.extend([label] * len(coords))
+                    for _, samples in benchmark_keys.items():
+                        coords = [sample['coordenadas'] for sample in samples]
+                        X_test.extend(coords)
+                    knn_obj.fit(X_train, y_train)
+                    y_pred = knn_obj.predict(X_test)
+                    valueslist = list(benchmark_keys.values())
+                    keyslist = list(camera_keys.keys())
+                    for i, value in enumerate(keyslist):
+                        if (value == y_pred[i]):
+                            camera_keys[keyslist[i]].append(valueslist[i])
+                        else:
+                            practice_char.append(value)
+                    channel.send(json.dumps({"flag": 1, "keys": practice_char}))
+                    return
+                    """
                     for label, samples in keysecond.items():
                         X_train.extend(samples)
                         y_train.extend([label] * len(samples))
@@ -107,12 +126,14 @@ async def offer(params: Offer):
                         y_train.extend([label] * len(samples))
                     knn_obj.fit(X_train, y_train)
                     return
+                    """
 
 
             key = jsonchunks["key"]
             chunk = jsonchunks["chunk"]
             totalchunks = jsonchunks["totalchunks"]
             idx = jsonchunks["index"]
+            time = jsonchunks["time"]
             status = jsonchunks["status"]
             kd.add(idx)
             if (chunk):
@@ -121,26 +142,23 @@ async def offer(params: Offer):
                     img = img_obj.reconstructImage(chunks)
                     # +cv2.imshow("Image", img)
                     # cv2.waitKey(1)
-                    results = img_obj.getKeyCoords(img, key)
-                    if ("error" in results):
+                    results = img_obj.getKeyCoords(img, key, time)
+                    if results is None:
+                        results = {}
+                        results["error"] = "Error: tecla presionada con el dedo incorrecto"
+                    elif ("error" in results):
                         kd.clear()
-                    elif (status == 0):
-                        if key in keysfirst:
-                            keysfirst[key].append((results["coords"]))
-                        else:
-                            keysfirst[key] = [results["coords"]]
-                    elif (status == 1):
-                        if key in keysecond:
-                            keysecond[key].append(results["coords"])
-                        else:
-                            keysecond[key] = [results["coords"]]
-                    elif (status == 2):
-                        y_pred = knn_obj.predict([results["coords"]])
-                        if(y_pred[0] == key):
-                            keysecond[key].append((results["coords"]))
-                    channel.send(json.dumps(results))
+                    elif status == 2:
+                        test = results["coords"]
+                        pred = knn_obj.predict([test])
+                        print(key, pred)
+                        if pred[0] != key:
+                            results["error"] = "Error: tecla presionada con el dedo incorrecto"
+                    jsonresults = json.dumps(results)
+                    channel.send(jsonresults)
                     chunks.clear()
                     kd.clear()
+
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():
