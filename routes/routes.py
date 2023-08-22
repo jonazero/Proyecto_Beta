@@ -5,23 +5,26 @@ from starlette.templating import Jinja2Templates
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from src.schemas import Offer
 from knn import KNN
+from textgen import generateSentences
 from camera import ImageProcessing
 from models.dictionary import ArrayRequest, SentencesModel
 from models.user import UserParamsModel
 from jsonwt import get_current_user_params
-# from database.db import engine
-# from database.dict import query_database
-# from models.dictionary import Base
+from database.db import engine
+from database.dict import query_database
+from models.dictionary import Base
+from helpers import generate_random_char, generate_random_pairs, lists2tuples, lists2TimeTuples
 import json
 import asyncio
 import os
 import asyncio
+import cv2
 routes = APIRouter()
 templates = Jinja2Templates(directory="templates")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_SECRET = os.getenv("GOOGLE_SECRET")
 pcs = set()
-# Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 
 @routes.get("/", response_class=HTMLResponse)
@@ -46,15 +49,45 @@ async def UserParams(params: UserParamsModel = Depends(get_current_user_params))
 
 @routes.post("/words/")
 async def get_words(data: ArrayRequest):
+    print(data)
+    starting_text = ["El", "La", "Mi", "Ella",
+                 "Había", "Una"]
     query_string = "SELECT word FROM words WHERE word LIKE '%"
     letters = data.letters
     limit = data.limit
     for letter in letters:
         query_string += f"{letter}%"
     query_string += f"' LIMIT {limit};"
-    # rows = query_database(query_string)
-    # words = [row[0] for row in rows]
-    # return JSONResponse(content={'words': words})
+    rows = query_database(query_string)
+    words = [row[0] for row in rows]
+    phrases = generateSentences(words, starting_text)
+    return JSONResponse(content={'phrases': phrases})
+
+@routes.get("/get-time/")
+async def get_time():
+    print("sldfkjsldkf")
+
+async def get_words(tupla):
+    starting_text = ["El", "La", "Mi", "Ella", "Había", "Una"]
+    words = []
+
+    for letters_tuple in tupla:
+        letter1, letter2 = letters_tuple
+        query_string = f"SELECT word FROM words WHERE word LIKE '%{letter1}{letter2}%' LIMIT {10};"
+        rows = query_database(query_string)
+        words.extend(row[0] for row in rows)
+    return words
+
+async def get_words2(letters_list):
+    starting_text = ["El", "La", "Mi", "Ella", "Había", "Una"]
+    words = []
+
+    for letter in letters_list:
+        query_string = f"SELECT word FROM words WHERE word LIKE '%{letter}%' LIMIT 1;"
+        rows = query_database(query_string)  # Assuming query_database is asynchronous
+        words.extend(row[0] for row in rows)
+    return words
+
 
 
 @routes.post("/offer_cv")
@@ -69,35 +102,42 @@ async def offer(params: Offer):
         kd = set()
         img_obj = ImageProcessing()
         knn_obj = KNN()
+
         @ channel.on("message")
         async def on_message(message):
             nonlocal kd
             jsonchunks = json.loads(message)
             if ("flag" in jsonchunks):
                 if (jsonchunks["flag"] == 1):
-                    benchmark_keys =  jsonchunks["benchmark_keys"]
+                    benchmark_keys = jsonchunks["benchmark_keys"]
                     camera_keys = jsonchunks["camera_keys"]
+                    phrase = jsonchunks["phrase"]
                     practice_char = []
-                    X_train = []
-                    y_train = []
-                    X_test = []
-                    for label, samples in camera_keys.items():
-                        coords = [sample['coordenadas'] for sample in samples]
-                        X_train.extend(coords)
-                        y_train.extend([label] * len(coords))
-                    for _, samples in benchmark_keys.items():
-                        coords = [sample['coordenadas'] for sample in samples]
-                        X_test.extend(coords)
-                    knn_obj.fit(X_train, y_train)
-                    y_pred = knn_obj.predict(X_test)
-                    valueslist = list(benchmark_keys.values())
-                    keyslist = list(camera_keys.keys())
-                    for i, value in enumerate(keyslist):
+                    coords = [sublist[1] for sublist in camera_keys]
+                    keys = [sublist[0] for sublist in camera_keys]
+                    test = [sublist[1] for sublist in benchmark_keys]
+                    knn_obj.fit(coords, keys)
+                    y_pred = knn_obj.predict(test)
+                    for i, value in enumerate(phrase):
                         if (value == y_pred[i]):
-                            camera_keys[keyslist[i]].append(valueslist[i])
+                            camera_keys.append(value)
                         else:
+                            y_pred[i] = None
                             practice_char.append(value)
-                    channel.send(json.dumps({"flag": 1, "keys": practice_char}))
+                    for i, value in enumerate(y_pred):
+                        if value == None:
+                            test[i] = None
+                            benchmark_keys[i][1] = None
+                    chartuples = lists2tuples(benchmark_keys)
+                    seqtuples = lists2TimeTuples(benchmark_keys)
+                    print(chartuples, seqtuples)
+                    charprob = generate_random_char(chartuples, 5)
+                    seqprob = generate_random_pairs(seqtuples, 5)
+                    print('\n\n',seqprob, charprob)
+                    print('\n\n gen: ', await get_words(seqprob))
+                    print("\n\n gen2: ", await get_words2(charprob))
+                    channel.send(json.dumps(
+                        {"flag": 1, "keys": practice_char}))               
                     return
                     """
                     for label, samples in keysecond.items():
@@ -128,7 +168,6 @@ async def offer(params: Offer):
                     return
                     """
 
-
             key = jsonchunks["key"]
             chunk = jsonchunks["chunk"]
             totalchunks = jsonchunks["totalchunks"]
@@ -140,9 +179,10 @@ async def offer(params: Offer):
                 chunks.append(chunk)
                 if (len(chunks) == totalchunks and len(kd) != 0):
                     img = img_obj.reconstructImage(chunks)
-                    # +cv2.imshow("Image", img)
-                    # cv2.waitKey(1)
+                    #cv2.imshow("Image", img)
+                    #cv2.waitKey(1)
                     results = img_obj.getKeyCoords(img, key, time)
+                    print(results)
                     if results is None:
                         results = {}
                         results["error"] = "Error: tecla presionada con el dedo incorrecto"
@@ -158,7 +198,7 @@ async def offer(params: Offer):
                     channel.send(jsonresults)
                     chunks.clear()
                     kd.clear()
-
+        
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():

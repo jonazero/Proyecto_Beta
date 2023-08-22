@@ -14,11 +14,10 @@ tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 
 # List of starting text prompts to generate sentences from
 starting_text = ["El", "La", "Mi", "Ella",
-                 "Había", "Una"]
+                 "Había", "Una", "Su", "Sus", "Ellos", "Las", "Los", "De"]
 
 # List of words that the model should try to include in the generated sentences if possible
-force_flexible = ["quería", "usába", "felíz", "amaba", "usar",
-                  "balon", "perico", "mundo", "amor", "acaba", "mentira", "canción", "enfermo"]
+force_flexible = ['fin', 'información', 'final', 'familia', 'difícil', 'formación', 'diferencia', 'fácil', 'función', 'figura']
 
 
 def generateSentences(force_flexible: list, starting_text: list):
@@ -54,3 +53,5 @@ def generateSentences(force_flexible: list, starting_text: list):
 
     # Return a list of generated sentences
     return generated_texts
+
+#print(generateSentences(force_flexible, starting_text))

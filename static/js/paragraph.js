@@ -1,3 +1,3 @@
-var paragraphs = ["fijate", 
-"fijate", 
-"fijate"];
+var paragraphs = ["fijatefijate", 
+"fijatefijate", 
+"fijatefijate"];

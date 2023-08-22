@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Numeric
 from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict
 Base = declarative_base()
 
 
@@ -16,6 +16,9 @@ class Word(Base):
 class ArrayRequest(BaseModel):
     letters: List[str]
     limit: int
+
+class timeRequest(BaseModel):
+    l: List[Dict]
 
 class SentencesModel(BaseModel):
     sentences: List[str]

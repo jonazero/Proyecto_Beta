@@ -267,9 +267,9 @@ function captureWebcam() {
 
 async function coordinate(stat) {
   first = sessionStorage.getItem("first");
-  let benchmark_coords = new Object(),
-    practice_coords = new Object(),
-    camera_coords = new Object();
+  let benchmark_coords = [],
+    practice_coords = [],
+    camera_coords = [];
   user_params = await getuserParams();
   if (first === "true" && stat === 0) {
     alert(
@@ -282,8 +282,7 @@ async function coordinate(stat) {
     const resp = await loadParagraph(paragraphs[0]).then((res) =>
       waitForKeyPress(res, 0)
     );
-    console.log("este es resp: ", resp);
-    Object.assign(benchmark_coords, resp);
+    benchmark_coords.push(...resp);
     stat = 1;
     sessionStorage.setItem(
       "benchmark_coords",
@@ -302,35 +301,50 @@ async function coordinate(stat) {
       resp = await loadParagraph(paragraphs[index]).then((res) =>
         waitForKeyPress(res, 1)
       );
-      Object.keys(resp).forEach((key) => {
-        if (camera_coords[key] && camera_coords[key].length > 0) {
-          camera_coords[key] = resp[key].concat(camera_coords[key]);
-        } else {
-          camera_coords[key] = resp[key];
-        }
-      });
+      camera_coords.push(...resp);
     }
     stat = 2;
     console.log(camera_coords);
     sessionStorage.setItem("camera_coords", JSON.stringify(camera_coords));
   }
   if (stat === 2) {
+    let phrases = "";
     dc.send(
       JSON.stringify({
         flag: 1,
         benchmark_keys: benchmark_coords,
         camera_keys: camera_coords,
+        phrase: paragraphs[1],
       })
     );
     wrongchars = await waitForMessage(dc, 1);
-    console.log(camera_coords);
+
+    /*
+    try {
+      const response = await fetch("/words/", {
+        body: JSON.stringify({ letters: wrongchars, limit: 10 }),
+        headers: { "Content-type": "application/json;charset=UTF-8" },
+        method: "POST",
+      });
+      const data = await handleErrors(response).json();
+      phrases = data.phrases;
+    } catch (error) {
+      console.log(error);
+    }
     alert(
       "Practice. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO"
     );
     if (Object.entries(benchmark_coords === 0)) {
       benchmark_coords = JSON.parse(sessionStorage.getItem("benchmark_coords"));
     }
-    await loadParagraph(paragraphs[0]).then((res) => waitForKeyPress(res, 2));
+
+    for (let index = 0; index < phrases.length; index++) {
+      resp = await loadParagraph(phrases[index]).then((res) =>
+        waitForKeyPress(res, 2)
+      );
+      practice_coords.push(...resp);
+    }
+    */
 
     /*
     try {
@@ -429,6 +443,7 @@ function resetSound() {
 
 function initTyping(kp) {
   let characters = typingText.querySelectorAll("span");
+  let iskeywrong = false;
   if (charIndex <= characters.length) {
     if (!isTyping) {
       timer = setInterval(initTimer, 1000);
@@ -446,10 +461,12 @@ function initTyping(kp) {
       if (characters[charIndex].innerText == kp) {
         characters[charIndex].classList.add("correct");
         playSound("sound-key");
+        iskeywrong = false;
       } else {
         mistakes++;
         characters[charIndex].classList.add("incorrect");
         playSound("sound-mistake");
+        iskeywrong = true;
       }
       charIndex++;
     }
@@ -466,6 +483,7 @@ function initTyping(kp) {
     mistakeTag.innerText = mistakes;
     cpmTag.innerText = charIndex - mistakes;
   }
+  return iskeywrong;
 }
 
 function initTimer() {
@@ -533,56 +551,74 @@ function loadParagraph(sentence) {
 }
 
 async function waitForKeyPress(len, status) {
-  let fingecoords = {};
+  let fingecoords = [];
   const CHUNK_SIZE = 16 * 1024; // Chunk size in bytes
   let frameIndex = 0; // Index to track the current frame being sent
   let chunks = []; // Array to store the chunks of the current frame
   let characters = typingText.querySelectorAll("span");
   let index = charIndex;
   let words = [];
+  let iskeywrong;
   //dc.onbufferedamountlow = sendNextChunk;
   return new Promise(async (resolve) => {
     const onKeyPress = async (event) => {
       const time = Date.now();
-      words.push({key: event.key, time: time});
       const frame = await captureFrame();
-      if (frame) {
-        splitFrameIntoChunks(frame, CHUNK_SIZE, status, event.key, time);
-        for (i = 0; i <= chunks.length; i++) {
-          sendNextChunk();
+      iskeywrong = initTyping(event.key);
+      console.log(iskeywrong);
+      if (iskeywrong == false) {
+        if (frame) {
+          splitFrameIntoChunks(
+            frame,
+            CHUNK_SIZE,
+            status,
+            event.key,
+            time,
+            iskeywrong
+          );
+          for (i = 0; i <= chunks.length; i++) {
+            sendNextChunk();
+          }
         }
-      }
-      if (len >= 1) {
-        showFinger(false);
-      }
-      initTyping(event.key);
-      const msg = await waitForMessage(dc, event.key);
-      if ("error" in msg) {
-        createToast("error", msg["error"]);
-        console.log(msg["error"]);
-        error = true;
-        while (
-          characters[charIndex].innerText !== characters[index].innerText
-        ) {
-          characters[charIndex].classList = [];
-          charIndex--;
+        if (len >= 1) {
+          showFinger(false);
         }
-        if (characters[charIndex].classList.contains("incorrect")) {
-          characters[charIndex].classList.replace("incorrect", "active");
+        const msg = await waitForMessage(dc, event.key);
+        if ("error" in msg) {
+          createToast("error", msg["error"]);
+          console.log(msg["error"]);
+          while (
+            characters[charIndex].innerText !== characters[index].innerText
+          ) {
+            characters[charIndex].classList = [];
+            charIndex--;
+          }
+          if (characters[charIndex].classList.contains("incorrect")) {
+            characters[charIndex].classList.replace("incorrect", "active");
+          }
+          if (characters[charIndex].classList.contains("correct")) {
+            characters[charIndex].classList.replace("correct", "active");
+          }
+        } else {
+          index++;
+          agregarTecla(msg.key, msg.coords, time);
+          len--;
+          if (len === 0) {
+            document.removeEventListener("keypress", onKeyPress);
+            reset();
+            resolve(fingecoords, words);
+          }
         }
-        if (characters[charIndex].classList.contains("correct")) {
-          characters[charIndex].classList.replace("correct", "active");
-        }
-      } else {
+      }else{
+        agregarTecla(characters[index].innerText, null, time);
         index++;
-        error = false;
-        agregarTecla(msg.key, msg.coords, time);
         len--;
         if (len === 0) {
           document.removeEventListener("keypress", onKeyPress);
           reset();
+
           resolve(fingecoords, words);
-        }
+        } 
       }
       showFinger(true);
     };
@@ -640,12 +676,9 @@ async function waitForKeyPress(len, status) {
   }
 
   // Agregar una tecla y sus coordenadas al objeto
-  function agregarTecla(tecla, coordenadas, time) {
-    if (fingecoords[tecla]) {
-      fingecoords[tecla].push({ coordenadas, time });
-    } else {
-      fingecoords[tecla] = [{ coordenadas, time }];
-    }
+  function agregarTecla(key, coords, time) {
+    console.log("este es fingercoords: ", fingecoords);
+    fingecoords.push([key, coords, time]);
   }
 }
 
@@ -658,7 +691,7 @@ function waitForMessage(dc, msgId) {
         resolve(msg);
       }
       if ("flag" in msg) {
-        resolve(msg);
+        resolve(msg["keys"]);
       }
     };
 

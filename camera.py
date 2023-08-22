@@ -2,7 +2,7 @@ import numpy as np
 import base64
 import cv2
 import os
-from src.jsontools import json2dic
+from helpers import json2dic
 from mediapipe.python.solutions import hands as mp_hands
 
 
