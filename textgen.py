@@ -54,4 +54,3 @@ def generateSentences(force_flexible: list, starting_text: list):
     # Return a list of generated sentences
     return generated_texts
 
-#print(generateSentences(force_flexible, starting_text))

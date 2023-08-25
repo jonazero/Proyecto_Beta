@@ -308,7 +308,8 @@ async function coordinate(stat) {
     sessionStorage.setItem("camera_coords", JSON.stringify(camera_coords));
   }
   if (stat === 2) {
-    let phrases = "";
+    let pairs,
+      chars, phrases = [];
     dc.send(
       JSON.stringify({
         flag: 1,
@@ -317,20 +318,24 @@ async function coordinate(stat) {
         phrase: paragraphs[1],
       })
     );
-    wrongchars = await waitForMessage(dc, 1);
-
-    /*
+    benchmark_coords = await waitForMessage(dc, 1);
     try {
       const response = await fetch("/words/", {
-        body: JSON.stringify({ letters: wrongchars, limit: 10 }),
+        body: JSON.stringify({
+          key_list: benchmark_coords,
+          pairs: pairs,
+          chars: chars,
+        }),
         headers: { "Content-type": "application/json;charset=UTF-8" },
         method: "POST",
       });
       const data = await handleErrors(response).json();
-      phrases = data.phrases;
+      console.log("aqui: ", data);
+      phrases = data.oraciones;
     } catch (error) {
-      console.log(error);
+      console.error(error.message);
     }
+
     alert(
       "Practice. Escribe la oracion segun indique el dedo. \nEVITA HACERLO DEMASIADO RAPIDO"
     );
@@ -344,7 +349,6 @@ async function coordinate(stat) {
       );
       practice_coords.push(...resp);
     }
-    */
 
     /*
     try {
@@ -609,7 +613,7 @@ async function waitForKeyPress(len, status) {
             resolve(fingecoords, words);
           }
         }
-      }else{
+      } else {
         agregarTecla(characters[index].innerText, null, time);
         index++;
         len--;
@@ -618,7 +622,7 @@ async function waitForKeyPress(len, status) {
           reset();
 
           resolve(fingecoords, words);
-        } 
+        }
       }
       showFinger(true);
     };
@@ -691,7 +695,7 @@ function waitForMessage(dc, msgId) {
         resolve(msg);
       }
       if ("flag" in msg) {
-        resolve(msg["keys"]);
+        resolve(msg["benchmark_keys"]);
       }
     };
 

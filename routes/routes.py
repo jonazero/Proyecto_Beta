@@ -13,12 +13,13 @@ from jsonwt import get_current_user_params
 from database.db import engine
 from database.dict import query_database
 from models.dictionary import Base
-from helpers import generate_random_char, generate_random_pairs, lists2tuples, lists2TimeTuples
+from helpers import generate_chars_probability, generate_sequences_probability, lists2tuples, lists2TimeTuples
 import json
 import asyncio
 import os
 import asyncio
 import cv2
+import random
 routes = APIRouter()
 templates = Jinja2Templates(directory="templates")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -46,50 +47,55 @@ async def camara(request: Request):
 async def UserParams(params: UserParamsModel = Depends(get_current_user_params)):
     return params
 
+async def query_db_words(queryword):
+    query_string = "SELECT word FROM words WHERE word LIKE '%"
+    query_string += queryword
+    query_string += f"' LIMIT {100}"
+    query_string = f"SELECT word FROM ({query_string}) AS subconsulta ORDER BY RAND () LIMIT 1;"
+    result = query_database(query_string)
+    if result:
+        print("llegue", result[0])
+        return result[0][0]
+
+
+
 
 @routes.post("/words/")
-async def get_words(data: ArrayRequest):
-    print(data)
+async def words(data: ArrayRequest):
+    key_list = data.key_list
+    pairs = data.pairs
+    chars = data.chars
     starting_text = ["El", "La", "Mi", "Ella",
-                 "Había", "Una"]
-    query_string = "SELECT word FROM words WHERE word LIKE '%"
-    letters = data.letters
-    limit = data.limit
-    for letter in letters:
-        query_string += f"{letter}%"
-    query_string += f"' LIMIT {limit};"
-    rows = query_database(query_string)
-    words = [row[0] for row in rows]
-    phrases = generateSentences(words, starting_text)
-    return JSONResponse(content={'phrases': phrases})
-
-@routes.get("/get-time/")
-async def get_time():
-    print("sldfkjsldkf")
-
-async def get_words(tupla):
-    starting_text = ["El", "La", "Mi", "Ella", "Había", "Una"]
-    words = []
-
-    for letters_tuple in tupla:
-        letter1, letter2 = letters_tuple
-        query_string = f"SELECT word FROM words WHERE word LIKE '%{letter1}{letter2}%' LIMIT {10};"
-        rows = query_database(query_string)
-        words.extend(row[0] for row in rows)
-    return words
-
-async def get_words2(letters_list):
-    starting_text = ["El", "La", "Mi", "Ella", "Había", "Una"]
-    words = []
-
-    for letter in letters_list:
-        query_string = f"SELECT word FROM words WHERE word LIKE '%{letter}%' LIMIT 1;"
-        rows = query_database(query_string)  # Assuming query_database is asynchronous
-        words.extend(row[0] for row in rows)
-    return words
-
-
-
+                 "Había", "Una", "Su", "Sus", "Ellos", "Las", "Los", "De"]
+    random.shuffle(starting_text)
+    char_tuples = lists2tuples(key_list)
+    seqt_tuples = lists2TimeTuples(key_list)
+    char_errors = generate_chars_probability(char_tuples, 5)
+    seq_errors = generate_sequences_probability(seqt_tuples, 5)
+    practice_words = []
+    if (char_errors is not None):
+        for char_error in char_errors:
+            practice_words.append(await query_db_words(f"{char_error}%"))
+    if (seq_errors is not None):
+        for tupleerror in seq_errors:
+            response = await query_db_words(f"{tupleerror[0]+tupleerror[1]}%")
+            if response is not None:
+                practice_words.append(response)
+    print("este es las data: ", key_list)
+    print("este es las secuencias unicas y con la diferencia de tiempo: ", seqt_tuples)
+    print("este es las letras a usar: ", char_errors)
+    print("estas son las secuencias a usar: ", seq_errors)
+    print("este es practice_words: ", practice_words)
+    try:
+        oraciones = generateSentences(practice_words, starting_text)
+        oraciones_minusculas = [palabra.lower() for palabra in oraciones]
+        return JSONResponse(content={'oraciones': oraciones_minusculas})
+    except:
+        for i, palabra in practice_words:
+            palabra[i] = palabra[i].lower()
+        return JSONResponse(content={'oraciones': practice_words})
+    #Implementar if para no consultar la base de datos
+    
 @routes.post("/offer_cv")
 async def offer(params: Offer):
     offer = RTCSessionDescription(sdp=params.sdp, type=params.type)
@@ -112,7 +118,6 @@ async def offer(params: Offer):
                     benchmark_keys = jsonchunks["benchmark_keys"]
                     camera_keys = jsonchunks["camera_keys"]
                     phrase = jsonchunks["phrase"]
-                    practice_char = []
                     coords = [sublist[1] for sublist in camera_keys]
                     keys = [sublist[0] for sublist in camera_keys]
                     test = [sublist[1] for sublist in benchmark_keys]
@@ -123,50 +128,12 @@ async def offer(params: Offer):
                             camera_keys.append(value)
                         else:
                             y_pred[i] = None
-                            practice_char.append(value)
                     for i, value in enumerate(y_pred):
                         if value == None:
                             test[i] = None
                             benchmark_keys[i][1] = None
-                    chartuples = lists2tuples(benchmark_keys)
-                    seqtuples = lists2TimeTuples(benchmark_keys)
-                    print(chartuples, seqtuples)
-                    charprob = generate_random_char(chartuples, 5)
-                    seqprob = generate_random_pairs(seqtuples, 5)
-                    print('\n\n',seqprob, charprob)
-                    print('\n\n gen: ', await get_words(seqprob))
-                    print("\n\n gen2: ", await get_words2(charprob))
-                    channel.send(json.dumps(
-                        {"flag": 1, "keys": practice_char}))               
+                    channel.send(json.dumps({"flag" : 1, "benchmark_keys": benchmark_keys}))       
                     return
-                    """
-                    for label, samples in keysecond.items():
-                        X_train.extend(samples)
-                        y_train.extend([label] * len(samples))
-                    for _, samples in keysfirst.items():
-                        X_test.extend(samples)
-                    knn_obj.fit(X_train, y_train)
-                    y_pred = knn_obj.predict(X_test)
-                    kfkeys = list(keysfirst.keys())
-                    kfvalues = list(keysfirst.values())
-                    for i, value in enumerate(kfkeys):
-                        if (value == y_pred[i]):
-                            print(value, y_pred[i])
-                            keysecond[kfkeys[i]].append(kfvalues[i])
-                        else:
-                            practice_char.append(value)
-                    print(practice_char)
-                    channel.send(json.dumps({"msg": 1, "keys": practice_char}))
-                    return 
-                else:
-                    X_train  = []
-                    y_train = []
-                    for label, samples in keysecond.items():
-                        X_train.extend(samples)
-                        y_train.extend([label] * len(samples))
-                    knn_obj.fit(X_train, y_train)
-                    return
-                    """
 
             key = jsonchunks["key"]
             chunk = jsonchunks["chunk"]
@@ -191,8 +158,8 @@ async def offer(params: Offer):
                     elif status == 2:
                         test = results["coords"]
                         pred = knn_obj.predict([test])
-                        print(key, pred)
                         if pred[0] != key:
+                            print("entre")
                             results["error"] = "Error: tecla presionada con el dedo incorrecto"
                     jsonresults = json.dumps(results)
                     channel.send(jsonresults)
