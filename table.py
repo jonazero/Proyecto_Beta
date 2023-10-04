@@ -13,7 +13,7 @@ dynamodb = resource("dynamodb",
 
 tables = [
     {
-        "TableName": "users",
+        "TableName": "usuarios",
         "KeySchema": [
             {
                 'AttributeName': 'id',
@@ -52,15 +52,16 @@ def create_tables():
         print(e)
 
 def add_user(id, created_at):
-    table = dynamodb.Table('users')
+    table = dynamodb.Table('usuarios')
     
     response = table.put_item(
         Item={
             'id': id,
-            'created_at': created_at
+            'created_at': created_at,
+            'age': 23
         }
     )
     
     return response
 
-add_user("1", "11/05/1996")
+add_user('1', "5/7/1991")

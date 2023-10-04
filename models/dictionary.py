@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, Numeric
 from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel
 from typing import List, Dict, Optional
-from typing import ClassVar, Any
 Base = declarative_base()
 
 
@@ -14,9 +13,9 @@ class Word(Base):
     avg_freq = Column(Numeric(18, 3))
 
 class ArrayRequest(BaseModel):
-    key_list: List[List[Any]]
-    pairs: List = None
-    chars: List = None
+    key: str
+    coords: Optional[List[float]]
+    time: int
 
 class timeRequest(BaseModel):
     l: List[Dict]

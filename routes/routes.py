@@ -11,15 +11,17 @@ from models.dictionary import ArrayRequest, SentencesModel
 from models.user import UserParamsModel
 from jsonwt import get_current_user_params
 from database.db import engine
+from database.user import update_user
 from database.dict import query_database
 from models.dictionary import Base
-from helpers import generate_chars_probability, generate_sequences_probability, lists2tuples, lists2TimeTuples
+from helpers import generate_chars_probability,list2Tuples, lists2TimeTuples, generate_sequences_probability
+from collections import Counter
 import json
 import asyncio
 import os
 import asyncio
-import cv2
 import random
+from typing import List
 routes = APIRouter()
 templates = Jinja2Templates(directory="templates")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -47,28 +49,64 @@ async def camara(request: Request):
 async def UserParams(params: UserParamsModel = Depends(get_current_user_params)):
     return params
 
-async def query_db_words(queryword):
+
+async def query_db_words(queryword, limit):
     query_string = "SELECT word FROM words WHERE word LIKE '%"
     query_string += queryword
     query_string += f"' LIMIT {100}"
-    query_string = f"SELECT word FROM ({query_string}) AS subconsulta ORDER BY RAND () LIMIT 1;"
+    query_string = f"SELECT word FROM ({query_string}) AS subconsulta ORDER BY RAND () LIMIT {limit};"
     result = query_database(query_string)
     if result:
-        print("llegue", result[0])
         return result[0][0]
 
-
-
-
 @routes.post("/words/")
-async def words(data: ArrayRequest):
-    key_list = data.key_list
-    pairs = data.pairs
-    chars = data.chars
+async def words(data: List[ArrayRequest]):
     starting_text = ["El", "La", "Mi", "Ella",
-                 "Había", "Una", "Su", "Sus", "Ellos", "Las", "Los", "De"]
+                     "Había", "Una", "Su", "Sus", "Ellos", "Las", "Los", "De"]
+    dataError = []
+    dataTimeError = []
+
+    for i, d in enumerate(data):
+        if d.key.isalnum():
+            dataError.append({"key": d.key, 'coords': d.coords, 'time': d.time})
+            if len(data) - i > 1 and d.coords != None:
+                if data[i + 1].key.isalnum() and data[i+1].coords != None:
+                    dataTimeError.append({"key": d.key, 'coords': d.coords, 'time': d.time})
+                    dataTimeError.append({"key": data[i+1].key, 'coords': data[i+1].coords, 'time': data[i+1].time})
+
     random.shuffle(starting_text)
-    char_tuples = lists2tuples(key_list)
+    charTuples = list2Tuples(dataError)   
+    timeTuples = lists2TimeTuples(dataTimeError)
+    chars= generate_chars_probability(charTuples, 5)
+    pairs = generate_sequences_probability(timeTuples, 5)
+    practice_words = []
+    if (chars is not None):
+        for char_error in chars:
+            response = await query_db_words(f"{char_error}%", 1)
+            practice_words.append(response)
+
+    if (pairs is not None):
+        frecuencia = {}
+        for par in pairs:
+            if par in frecuencia:
+                frecuencia[par] += 1
+            else:
+                frecuencia[par] = 1
+        pairs = [par + (count,) for par, count in frecuencia.items()]
+        for tupleerror in pairs:
+            response = await query_db_words(f"{tupleerror[0]+tupleerror[1]}%", tupleerror[2])
+            if response is not None:
+                practice_words.append(response)
+    try:
+        oraciones = generateSentences(practice_words, starting_text)
+        oraciones_minusculas = [palabra.lower() for palabra in oraciones]
+        return JSONResponse(content={'oraciones': oraciones_minusculas})
+    except:
+        for i, palabra in practice_words:
+            palabra[i] = palabra[i].lower()
+        return JSONResponse(content={'oraciones': practice_words})
+
+    '''
     seqt_tuples = lists2TimeTuples(key_list)
     char_errors = generate_chars_probability(char_tuples, 5)
     seq_errors = generate_sequences_probability(seqt_tuples, 5)
@@ -81,11 +119,6 @@ async def words(data: ArrayRequest):
             response = await query_db_words(f"{tupleerror[0]+tupleerror[1]}%")
             if response is not None:
                 practice_words.append(response)
-    print("este es las data: ", key_list)
-    print("este es las secuencias unicas y con la diferencia de tiempo: ", seqt_tuples)
-    print("este es las letras a usar: ", char_errors)
-    print("estas son las secuencias a usar: ", seq_errors)
-    print("este es practice_words: ", practice_words)
     try:
         oraciones = generateSentences(practice_words, starting_text)
         oraciones_minusculas = [palabra.lower() for palabra in oraciones]
@@ -94,8 +127,10 @@ async def words(data: ArrayRequest):
         for i, palabra in practice_words:
             palabra[i] = palabra[i].lower()
         return JSONResponse(content={'oraciones': practice_words})
-    #Implementar if para no consultar la base de datos
-    
+    # Implementar if para no consultar la base de datos
+    '''
+
+
 @routes.post("/offer_cv")
 async def offer(params: Offer):
     offer = RTCSessionDescription(sdp=params.sdp, type=params.type)
@@ -104,68 +139,53 @@ async def offer(params: Offer):
 
     @ pc.on("datachannel")
     def on_datachannel(channel):
-        chunks = []
-        kd = set()
+        chunks = {}
         img_obj = ImageProcessing()
         knn_obj = KNN()
 
         @ channel.on("message")
         async def on_message(message):
-            nonlocal kd
-            jsonchunks = json.loads(message)
-            if ("flag" in jsonchunks):
-                if (jsonchunks["flag"] == 1):
-                    benchmark_keys = jsonchunks["benchmark_keys"]
-                    camera_keys = jsonchunks["camera_keys"]
-                    phrase = jsonchunks["phrase"]
-                    coords = [sublist[1] for sublist in camera_keys]
-                    keys = [sublist[0] for sublist in camera_keys]
-                    test = [sublist[1] for sublist in benchmark_keys]
-                    knn_obj.fit(coords, keys)
-                    y_pred = knn_obj.predict(test)
-                    for i, value in enumerate(phrase):
-                        if (value == y_pred[i]):
-                            camera_keys.append(value)
-                        else:
-                            y_pred[i] = None
-                    for i, value in enumerate(y_pred):
-                        if value == None:
-                            test[i] = None
-                            benchmark_keys[i][1] = None
-                    channel.send(json.dumps({"flag" : 1, "benchmark_keys": benchmark_keys}))       
-                    return
-
-            key = jsonchunks["key"]
-            chunk = jsonchunks["chunk"]
-            totalchunks = jsonchunks["totalchunks"]
-            idx = jsonchunks["index"]
-            time = jsonchunks["time"]
-            status = jsonchunks["status"]
-            kd.add(idx)
-            if (chunk):
-                chunks.append(chunk)
-                if (len(chunks) == totalchunks and len(kd) != 0):
-                    img = img_obj.reconstructImage(chunks)
-                    #cv2.imshow("Image", img)
-                    #cv2.waitKey(1)
-                    results = img_obj.getKeyCoords(img, key, time)
-                    print(results)
-                    if results is None:
-                        results = {}
-                        results["error"] = "Error: tecla presionada con el dedo incorrecto"
-                    elif ("error" in results):
-                        kd.clear()
-                    elif status == 2:
-                        test = results["coords"]
-                        pred = knn_obj.predict([test])
-                        if pred[0] != key:
-                            print("entre")
-                            results["error"] = "Error: tecla presionada con el dedo incorrecto"
-                    jsonresults = json.dumps(results)
-                    channel.send(jsonresults)
-                    chunks.clear()
-                    kd.clear()
-        
+            jsonChunk = json.loads(message)
+            programPhase = jsonChunk["programPhase"]
+            if programPhase == 2:
+                coords = []
+                keys = []
+                cameraData = jsonChunk["cameraData"]
+                for data in cameraData:
+                    coords.append(data["coords"])
+                    keys.append(data["key"])
+                knn_obj.fit(coords, keys)
+            else:
+                keyIndex = jsonChunk["keyIndex"]
+                isLast = jsonChunk["isLast"]
+                frameChunk = jsonChunk["frameChunk"]
+                keyTime = jsonChunk["keyTime"]
+                key = jsonChunk["key"]
+                if isLast == True:  # Si es el ultimo chunk se procede a reconstruir la imagen
+                    # Si es primera vez se crea entreada, sino se añade el valor al existente
+                    chunks.setdefault(keyIndex, []).append(frameChunk)
+                    keyImg = img_obj.reconstructImage(chunks[keyIndex])
+                    keyResults = img_obj.getKeyCoords(keyImg, key, keyTime)
+                    if programPhase == 0:
+                        keyResults["keyIndex"] = keyIndex
+                        channel.send(json.dumps(keyResults))
+                    else:
+                        keyTest = keyResults["coords"]
+                        #height, width, channels = keyImg.shape
+                        #cv2.circle(keyImg, (int(keyTest[0] * width), int(keyTest[1] * height)), 5, (0, 0, 255) , 2)
+                        #cv2.imshow("Image", keyImg)
+                        #cv2.waitKey(1)
+                        keyPred = knn_obj.predict([keyTest])[0]
+                        #print(keyPred)
+                        if keyPred != key:
+                            keyResults["error"] = "Tecla presionada con el dedo incorrecto"
+                            keyResults["keyIndex"] = keyIndex
+                        #print(keyResults)
+                        channel.send(json.dumps(keyResults))
+                    del(chunks[keyIndex])
+                        
+                else:
+                    chunks.setdefault(keyIndex, []).append(frameChunk)
 
     @ pc.on("connectionstatechange")
     async def on_connectionstatechange():
