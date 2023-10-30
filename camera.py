@@ -6,6 +6,7 @@ from helpers import json2dic
 from mediapipe.python.solutions import hands as mp_hands
 from unidecode import unidecode
 
+
 class ImageProcessing():
     def __init__(self) -> None:
         self.mp_hands = mp_hands.Hands(static_image_mode=False,
@@ -35,26 +36,27 @@ class ImageProcessing():
             return results
         except Exception as e:
             print(f"Error during Mediapipe processing: {e}")
-            return {"error": e}
+            return None
 
     def getKeyCoords(self, image, key, time):
         results = self.getMediapipeResults(image)
-        lower_key = unidecode(key.lower())
-        if results.multi_hand_landmarks:
+        ascii_key = str(ord(key))
+        if results == None:
+            message = {
+                "key": key, "error": "El sistema no pudo identificar las manos. Por favor verifique que la cámara esté enfocando el teclado."}
+            return message
+        else:
             for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
                 mano = results.multi_handedness[idx].classification[0].label
-                if lower_key in self.key_distribution[mano]:
+                if ascii_key in self.key_distribution[mano]:
+                    keyPoint = self.key_distribution[mano][ascii_key]
                     key_coord = {"key": key,
-                                 "coords": [hand_landmarks.landmark[self.key_distribution[mano][lower_key]].x,
-                                            hand_landmarks.landmark[self.key_distribution[mano][lower_key]].y],
+                                 "coords": [hand_landmarks.landmark[keyPoint].x, hand_landmarks.landmark[keyPoint].y],
                                  "time": time}
+
                     if key_coord:
                         return key_coord
                     else:
                         message = {
                             "key": key, "error": "El sistema no pudo identificar las manos. Por favor verifique que la cámara esté enfocando el teclado."}
                         return message
-        else:
-            message = {
-                "key": key, "error": "El sistema no pudo identificar las manos. Por favor verifique que la cámara esté enfocando el teclado."}
-            return message

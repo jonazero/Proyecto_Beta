@@ -19,47 +19,48 @@ const typingText = document.querySelector(".typing-text p"),
   flipver = document.getElementById("btn-flip-ver"),
   notifications = document.querySelector(".notifications"),
   fingerImages = {
-    " ": ["../img/manos/1p.png", "../img/manos/2p.png"],
-    1: ["../img/manos/1m.png"],
-    q: ["../img/manos/1m.png"],
-    z: ["../img/manos/1m.png"],
-    a: ["../img/manos/1m.png"],
-    2: ["../img/manos/1a.png"],
-    x: ["../img/manos/1a.png"],
-    w: ["../img/manos/1a.png"],
-    s: ["../img/manos/1a.png"],
-    3: ["../img/manos/1med.png"],
-    c: ["../img/manos/1med.png"],
-    d: ["../img/manos/1med.png"],
-    e: ["../img/manos/1med.png"],
-    5: ["../img/manos/1i.png"],
-    4: ["../img/manos/1i.png"],
-    v: ["../img/manos/1i.png"],
-    b: ["../img/manos/1i.png"],
-    g: ["../img/manos/1i.png"],
-    t: ["../img/manos/1i.png"],
-    r: ["../img/manos/1i.png"],
-    f: ["../img/manos/1i.png"],
-    0: ["../img/manos/2m.png"],
-    ñ: ["../img/manos/2m.png"],
-    p: ["../img/manos/2m.png"],
-    9: ["../img/manos/2a.png"],
-    ".": ["../img/manos/2a.png"],
-    l: ["../img/manos/2a.png"],
-    o: ["../img/manos/2a.png"],
-    8: ["../img/manos/2med.png"],
-    ",": ["../img/manos/2med.png"],
-    k: ["../img/manos/2med.png"],
-    i: ["../img/manos/2med.png"],
-    y: ["../img/manos/2i.png"],
-    h: ["../img/manos/2i.png"],
-    n: ["../img/manos/2i.png"],
-    m: ["../img/manos/2i.png"],
-    u: ["../img/manos/2i.png"],
-    j: ["../img/manos/2i.png"],
-    7: ["../img/manos/2i.png"],
-    6: ["../img/manos/2i.png"],
+    " ": ["../static/img/manos/1p.png", "../static/img/manos/2p.png"],
+    1: ["../static/img/manos/1m.png"],
+    q: ["../static/img/manos/1m.png"],
+    z: ["../static/img/manos/1m.png"],
+    a: ["../static/img/manos/1m.png"],
+    2: ["../static/img/manos/1a.png"],
+    x: ["../static/img/manos/1a.png"],
+    w: ["../static/img/manos/1a.png"],
+    s: ["../static/img/manos/1a.png"],
+    3: ["../static/img/manos/1med.png"],
+    c: ["../static/img/manos/1med.png"],
+    d: ["../static/img/manos/1med.png"],
+    e: ["../static/img/manos/1med.png"],
+    5: ["../static/img/manos/1i.png"],
+    4: ["../static/img/manos/1i.png"],
+    v: ["../static/img/manos/1i.png"],
+    b: ["../static/img/manos/1i.png"],
+    g: ["../static/img/manos/1i.png"],
+    t: ["../static/img/manos/1i.png"],
+    r: ["../static/img/manos/1i.png"],
+    f: ["../static/img/manos/1i.png"],
+    0: ["../static/img/manos/2m.png"],
+    ñ: ["../static/img/manos/2m.png"],
+    p: ["../static/img/manos/2m.png"],
+    9: ["../static/img/manos/2a.png"],
+    ".": ["../static/img/manos/2a.png"],
+    l: ["../static/img/manos/2a.png"],
+    o: ["../static/img/manos/2a.png"],
+    8: ["../static/img/manos/2med.png"],
+    ",": ["../static/img/manos/2med.png"],
+    k: ["../static/img/manos/2med.png"],
+    i: ["../static/img/manos/2med.png"],
+    y: ["../static/img/manos/2i.png"],
+    h: ["../static/img/manos/2i.png"],
+    n: ["../static/img/manos/2i.png"],
+    m: ["../static/img/manos/2i.png"],
+    u: ["../static/img/manos/2i.png"],
+    j: ["../static/img/manos/2i.png"],
+    7: ["../static/img/manos/2i.png"],
+    6: ["../static/img/manos/2i.png"],
   };
+
 var timer,
   maxTime = 600,
   timeLeft = maxTime,
@@ -76,7 +77,9 @@ var timer,
   constraints = null,
   currentStream,
   canvas = document.createElement("canvas"),
-  context = canvas.getContext("2d");
+  context = canvas.getContext("2d"),
+  testData = [],
+  cameraData = [];
 
 delayinput.onchange = function () {
   inpField.focus();
@@ -102,7 +105,6 @@ flipver.addEventListener("click", function () {
   videoElement.classList.toggle("flipped-y");
   capturedImageElement.classList.toggle("flipped-y");
 });
-
 
 videoSelect.onchange = function () {
   capturedImageElement.style.display = "none";
@@ -252,8 +254,8 @@ function captureWebcam() {
   let constraints = {
     audio: false,
     video: {
-      width: { min: 900, max: 1920 },
-      height: { min: 700, max: 1080 },
+      width: { min: 300, max: 1920 },
+      height: { min: 200, max: 1080 },
     },
   };
 
@@ -270,31 +272,52 @@ function captureWebcam() {
 }
 
 async function coordinate(stat) {
-  let testData = [],
-    cameraData = [];
   if (stat === 0) {
     alert(
       "Por favor escribe las siguientes oraciones con los dedos que se indican. \nEVITA HACERLO DEMASIADO RAPIDO"
     );
     hands.style.display = "flex";
     for (let index = 0; index < 3; index++) {
-      let sentence = await loadParagraph("fijate que ponzoña de whisky exclamaba grave");
+      let sentence = await loadParagraph(
+        paragraphs[Math.floor(Math.random() * paragraphs.length)]
+      );
       let resp = await TypeText(sentence, 0);
       cameraData.push(...resp);
     }
+    console.log(JSON.stringify(cameraData));
     dc.send(JSON.stringify({ programPhase: 2, cameraData }));
     stat = 1;
     sessionStorage.setItem("cameraData", JSON.stringify(cameraData));
-    console.log(cameraData);
   }
   if (stat === 1) {
+    createToast(
+      "info",
+      "Comencemos practicando los siguientes ejercicios.",
+      4000
+    );
+    let dd = [];
     let dataretreived = "";
     if (dataretreived === "") {
       let phrases = [];
-      let sentence = await loadParagraph(paragraphs[Math.floor(Math.random() * paragraphs.length)]);
+      let sentence = await loadParagraph(
+        paragraphs[Math.floor(Math.random() * paragraphs.length)]
+      );
       let resp = await TypeText(sentence, 1);
       testData.push(...resp);
-      console.log(JSON.stringify(testData));
+      testData.forEach((element) => {
+        if (element["coords"] !== null) {
+          cameraData.push(element);
+        }
+      });
+      resp.forEach((element) => {
+        if (element["coords"] !== null) {
+          dd.push(element);
+        }
+      });
+      console.log("este es dd: ", JSON.stringify(dd));
+      dc.send(JSON.stringify({ programPhase: 2, cameraData: dd }));
+      dd = [];
+      loadSpinner(true);
       try {
         const response = await fetch("/words/", {
           body: JSON.stringify(testData),
@@ -306,12 +329,14 @@ async function coordinate(stat) {
       } catch (error) {
         console.error(error.message);
       }
+      loadSpinner(false);
       for (let index = 0; index < phrases.length; index++) {
         let sentence = await loadParagraph(phrases[index]);
-        let resp = await(TypeText(sentence, 1));
+        let resp = await TypeText(sentence, 1);
         testData.push(...resp);
       }
-      stat = 1;
+      
+      coordinate(1);
     } else {
     }
   }
@@ -364,8 +389,8 @@ function stop() {
 
 function showFinger(key) {
   const images = fingerImages[key] || [];
-  const iiDefaultSrc = "../img/manos/1.png";
-  const idDefaultSrc = "../img/manos/2.png";
+  const iiDefaultSrc = "../static/img/manos/1.png";
+  const idDefaultSrc = "../static/img/manos/2.png";
 
   if (images.length > 0) {
     const firstImage = images[0] || iiDefaultSrc;
@@ -456,8 +481,6 @@ function initTimer() {
   }
 }
 
-
-
 async function getuserParams() {
   try {
     let response = await fetch("/user/params", {
@@ -504,6 +527,7 @@ async function TypeText(sentence, programPhase) {
   let keyIndex = 0; // Index to track the current frame being sent
   let chunks = []; // Array to store the chunks of the current frame
   let characters = typingText.querySelectorAll("span");
+  let error = false;
   dc.bufferedAmountLowThreshold = CHUNK_SIZE;
   dc.addEventListener("bufferedamountlow", sendChunks);
   dc.onmessage = (e) => {
@@ -513,55 +537,57 @@ async function TypeText(sentence, programPhase) {
   showFinger(sentence[0]);
   return new Promise(async (resolve) => {
     const onKeyPress = async (event) => {
-      console.log(characters);
       let key = event.key;
       let frame = await captureFrame();
       let keyTime = Date.now();
-      if (key === sentence[keyIndex]) {
-        characters[keyIndex].classList.add("correct");
-        characters[keyIndex].classList.remove("active");
-        playSound("sound-key");
-        if (isalfa(key)) {
-          chunks = chunks.concat(
-            splitFrameIntoChunks(
-              frame,
-              CHUNK_SIZE,
-              programPhase,
-              key,
-              keyTime,
-              keyIndex
-            )
-          ); //chunks de la tecla presionada
-          sendChunks();
+      if (error === false) {
+        if (key === sentence[keyIndex]) {
+          characters[keyIndex].classList.add("correct");
+          characters[keyIndex].classList.remove("active");
+          playSound("sound-key");
+          if (isalfa(key)) {
+            chunks = chunks.concat(
+              splitFrameIntoChunks(
+                frame,
+                CHUNK_SIZE,
+                programPhase,
+                key,
+                keyTime,
+                keyIndex
+              )
+            ); //chunks de la tecla presionada
+            sendChunks();
+          }
+        } else if (programPhase !== 0) {
+          // Fase de test, si hay error se marca
+          correctKeys.push({
+            key: sentence[keyIndex],
+            coords: null,
+            time: keyTime,
+          });
+          characters[keyIndex].classList.add("incorrect");
+          characters[keyIndex].classList.remove("active");
+          playSound("sound-mistake");
+        } else {
+          //Fase de camara, si hay error se regresa
+          playSound("sound-mistake");
+          createToast("error", "Tecla incorrecta", 2000);
+          keyIndex--;
         }
-      } else if (programPhase !== 0) {
-        // Fase de test, si hay error se marca
-        correctKeys.push({
-          key: sentence[keyIndex],
-          coords: null,
-          time: keyTime,
-        });
-        characters[keyIndex].classList.add("incorrect");
-        characters[keyIndex].classList.remove("active");
-        playSound("sound-mistake");
-      } else {
-        //Fase de camara, si hay error se regresa
-        playSound("sound-mistake");
-        createToast("error", "Tecla incorrecta");
-        keyIndex--;
-      }
-      if (characters.length - 1 == keyIndex) {
-        //fin de la escritura
-        keyIndex = 0;
-        document.removeEventListener("keypress", onKeyPress);
-        await new Promise((r) => setTimeout(r, 1000)); //espera 1s a que se obtenga el resultado
-        resolve(correctKeys);
-      } else {
-        keyIndex++;
-        showFinger(sentence[keyIndex]);
-        characters[keyIndex].classList.add("active");
+        if (characters.length - 1 == keyIndex) {
+          //fin de la escritura
+          keyIndex = 0;
+          document.removeEventListener("keypress", onKeyPress);
+          await new Promise((r) => setTimeout(r, 1000)); //espera 1s a que se obtenga el resultado
+          resolve(correctKeys);
+        } else {
+          keyIndex++;
+          showFinger(sentence[keyIndex]);
+          characters[keyIndex].classList.add("active");
+        }
       }
     };
+
     document.addEventListener("keypress", onKeyPress);
   });
 
@@ -570,7 +596,8 @@ async function TypeText(sentence, programPhase) {
       if (dc.bufferedAmount >= CHUNK_SIZE) {
         break;
       }
-      dc.send(chunks.shift());
+      let ch = chunks.shift();
+      dc.send(JSON.stringify(ch));
     }
   }
 
@@ -617,8 +644,7 @@ async function TypeText(sentence, programPhase) {
         isLast:
           i < totalchunks - 1 ? false : i === totalchunks - 1 ? true : false,
       };
-      const jsonChunk = JSON.stringify(chunkData);
-      keyChunks.push(jsonChunk);
+      keyChunks.push(chunkData);
     }
     return keyChunks;
   }
@@ -627,13 +653,18 @@ async function TypeText(sentence, programPhase) {
     let jsonData = JSON.parse(data);
     let dataIndex = jsonData["keyIndex"];
     if ("error" in jsonData) {
-      createToast("error", jsonData["error"]);
+      playSound("sound-mistake");
+      error = true;
+      createToast("error", jsonData["error"], 2000);
       chunks = [];
       for (let i = dataIndex; i <= keyIndex; i++) {
         characters[i].classList = [];
       }
       keyIndex = dataIndex;
       characters[keyIndex].classList.add("active");
+      setTimeout(function () {
+        error = false;
+      }, 500);
     } else {
       correctKeys.push(jsonData);
     }
@@ -641,7 +672,7 @@ async function TypeText(sentence, programPhase) {
   }
 
   function reset() {
-    keyIndex= 0;
+    keyIndex = 0;
     for (let i = 0; i <= characters.length - 1; i++) {
       characters[i].classList = [];
     }
@@ -672,20 +703,20 @@ const removeToast = (toast) => {
   setTimeout(() => toast.remove(), 2000); // Removing the toast after 500ms
 };
 
-const createToast = (id, text) => {
+const createToast = (id, text, time) => {
   // Getting the icon and text for the toast based on the id passed
   const icon = toastDetails[id];
   const toast = document.createElement("li"); // Creating a new 'li' element for the toast
   toast.className = `toast ${id}`; // Setting the classes for the toast
   // Setting the inner HTML for the toast
   toast.innerHTML = `<div class="column">
-                       <i class="fa-solid ${icon}"></i>
+                       <i class="fa-solid ${icon.icon}"></i>
                        <span>${text}</span>
                     </div>
                     <i class="fa-solid fa-xmark" onclick="removeToast(this.parentElement)"></i>`;
   notifications.appendChild(toast); // Append the toast to the notification ul
   // Setting a timeout to remove the toast after the specified duration
-  toast.timeoutId = setTimeout(() => removeToast(toast), toastDetails.timer);
+  toast.timeoutId = setTimeout(() => removeToast(toast), time);
 };
 
 function loadSpinner(load) {

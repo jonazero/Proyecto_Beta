@@ -43,32 +43,36 @@ def list2Tuples(data):
     # Devolver la estructura de datos
     return data_structure
 
-def lists2TimeTuples(keypress_data):
-    # Initialize a dictionary to store time differences for each key pair
-    time_diffs = {}
+def lists2TimeTuples(data):
+    prev_event = None
+    total_time = {}
+    pair_count = {}
 
-    # Iterate through the list and calculate time differences
-    for i in range(1, len(keypress_data)):
-        key1 = keypress_data[i - 1]['key']
-        key2 = keypress_data[i]['key']
-        time1 = keypress_data[i - 1]['time']
-        time2 = keypress_data[i]['time']
-        diff = time2 - time1
+    for event in data:
+        if prev_event is not None:
+            key1_coords = prev_event['coords']
+            key2_coords = event['coords']
+            
+            # Verificar si alguna de las teclas tiene coordenadas None y saltar el par si es así
+            if key1_coords is not None and key2_coords is not None:
+                key_pair = (prev_event['key'], event['key'])
+                time_diff = event['time'] - prev_event['time']
+                if key_pair in total_time:
+                    total_time[key_pair] += time_diff
+                    pair_count[key_pair] += 1
+                else:
+                    total_time[key_pair] = time_diff
+                    pair_count[key_pair] = 1
+        prev_event = event
 
-        # Check if this key pair exists in the dictionary
-        if (key1, key2) in time_diffs:
-            time_diffs[(key1, key2)].append(diff)
-        else:
-            time_diffs[(key1, key2)] = [diff]
+    # Calcular el tiempo promedio para pares de teclas iguales y almacenar en tuplas
+    average_key_pairs = []
+    for key_pair, time_sum in total_time.items():
+        count = pair_count[key_pair]
+        average_time = time_sum / count
+        average_key_pairs.append((key_pair[0], key_pair[1], average_time))
 
-    # Calculate the average time difference for equal key pairs
-    averages = {}
-    for key_pair, diffs in time_diffs.items():
-        if len(diffs) > 1:
-            average_diff = sum(diffs) / len(diffs)
-            averages[key_pair] = average_diff
-
-    return averages
+    return average_key_pairs
 
 def generate_chars_probability(teclas_datos, cantidad):
     probabilidades = [(tecla, veces_equivocada / veces_presionada) for tecla, veces_presionada, veces_equivocada in teclas_datos]
@@ -81,13 +85,10 @@ def generate_chars_probability(teclas_datos, cantidad):
     selecciones = random.choices([p[0] for p in probabilidades_normalizadas], [p[1] for p in probabilidades_normalizadas], k=cantidad)
     return selecciones
 
-def generate_sequences_probability(probabilities, num_pairs):
+def generate_sequences_probability(probability_tuples, num_pairs):
     key_pairs = []
-    keys = list(probabilities.keys())
-    probabilities_list = list(probabilities.values())
-    
     for _ in range(num_pairs):
-        chosen_pair = random.choices(keys, probabilities_list, k=1)
-        key_pairs.append(chosen_pair[0])  # Append the selected key (not a list with one element)
-    
+        chosen_pair = random.choices(probability_tuples, [p for _, _, p in probability_tuples], k=1)
+        key_pairs.append(chosen_pair[0][:2])  # Append the selected key pair
+        
     return key_pairs

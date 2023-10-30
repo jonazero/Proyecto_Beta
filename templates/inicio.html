@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="{{ url_for('img', path='/LOGO.png') }}" type="image/x-icon">
+    <link rel="icon" href="{{ url_for('static', path='/img/LOGO.png') }}" type="image/x-icon">
     <title>FastKey</title>
 </head>
 
@@ -15,7 +15,7 @@
         <span id="navbar-toggle">
             <i class="fas fa-bars"></i>
         </span>
-        <a href="#" id="logo"><img src="{{ url_for('img', path='/LOGO.png') }}" alt="LOGO"></a>
+        <a href="#" id="logo"><img src="{{ url_for('static', path='/img/LOGO.png') }}" alt="LOGO"></a>
         <ul id="main-nav">
             <li>
                 <a href="/signup" class="nav-links">Iniciar sesión</a>

@@ -22,6 +22,4 @@ app.add_middleware(
 app.mount("/auth", auth_app)
 app.include_router(routes)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/img", StaticFiles(directory="img"), name="img")
-app.mount("/audio", StaticFiles(directory="audio"), name="audio")
 templates = Jinja2Templates(directory="templates")

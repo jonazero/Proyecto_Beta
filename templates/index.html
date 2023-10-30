@@ -6,7 +6,7 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="{{ url_for('img', path='/LOGO.png') }}" type="image/x-icon">
+  <link rel="icon" href="{{ url_for('static', path='/img/LOGO.png') }}" type="image/x-icon">
 </head>
 
 <body onload="start()">
@@ -15,7 +15,7 @@
     <span id="navbar-toggle">
       <i class="fas fa-bars"></i>
     </span>
-    <a id="logo"><img src="{{ url_for('img', path='/LOGO.png') }}" alt="LOGO"></a>
+    <a id="logo"><img src="{{ url_for('static', path='/img/LOGO.png') }}" alt="LOGO"></a>
     <ul id="main-nav">
       <li>
         <a href="#" class="nav-links">Inicio</a>
@@ -58,8 +58,8 @@
     </div>
   </div>
   <div class="hands">
-    <img id="ii" src="{{ url_for('img', path='/manos/1.png') }}" width="80" alt="LOGO">
-    <img id="id" src="{{ url_for('img', path='/manos/2.png') }}" width="80" alt="LOGO2">
+    <img id="ii" src="{{ url_for('static', path='/img/manos/1.png') }}" width="80" alt="LOGO">
+    <img id="id" src="{{ url_for('static', path='/img/manos/2.png') }}" width="80" alt="LOGO2">
   </div>
   <div id="container" style="display: block;">
     <div class="select">
@@ -72,10 +72,10 @@
       <video id="video" autoplay="true" playsinline="true"></video>
       <div id="buttonContainer" style="display: none;">
         <button class="captureButton" id="btn-flip-hor">
-          <img src="{{ url_for('img', path='/flip-horizontal.png') }}" alt="Voltear horizontalmente">
+          <img src="{{ url_for('static', path='/img/flip-horizontal.png') }}" alt="Voltear horizontalmente">
         </button>
         <button class="captureButton" id="btn-flip-ver">
-          <img src="{{ url_for('img', path='/flip-vertical.png') }}" alt="Voltear verticalmente">
+          <img src="{{ url_for('static', path='/img/flip-vertical.png') }}" alt="Voltear verticalmente">
         </button>
       </div>
       <img id="capturedImage" style="display:none">
@@ -83,12 +83,12 @@
   </div>
 
   <audio id="sound-key" controls style="display:none">
-    <source src="{{ url_for('audio', path='/type.mp3') }}" type="audio/mpeg"> Your browser does
+    <source src="{{ url_for('static', path='/audio/type.mp3') }}" type="audio/mpeg"> Your browser does
     not support the audio element.
   </audio>
 
   <audio id="sound-mistake" controls style="display: none">
-    <source src="{{ url_for('audio', path='/mistake.mp3') }}" type="audio/mpeg"> Your browser does
+    <source src="{{ url_for('static', path='/audio/mistake.mp3') }}" type="audio/mpeg"> Your browser does
     not support the audio element.
   </audio>
 
