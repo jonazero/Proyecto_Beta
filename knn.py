@@ -1,6 +1,7 @@
 import math
 from collections import Counter
 
+
 class KNN:
     def __init__(self, k=3):
         self.k = k
@@ -17,7 +18,6 @@ class KNN:
     def fit(self, X, y):
         self.X_train.extend(X)
         self.y_train.extend(y)
-        print(self.X_train, self.y_train)
 
     def predict(self, X):
         y_pred = []
@@ -40,6 +40,3 @@ class KNN:
             most_common = Counter(k_labels).most_common(1)
             y_pred.append(most_common[0][0])
         return y_pred
-
-
-

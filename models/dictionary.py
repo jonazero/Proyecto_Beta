@@ -17,8 +17,3 @@ class ArrayRequest(BaseModel):
     coords: Optional[List[float]]
     time: int
 
-class timeRequest(BaseModel):
-    l: List[Dict]
-
-class SentencesModel(BaseModel):
-    sentences: List[str]

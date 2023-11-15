@@ -43,7 +43,7 @@ form_signup.addEventListener('submit', function (e) {
         return
     }
     fetch("/auth/create-user", {
-        body: JSON.stringify({ username: user.get("name"), email: user.get("email"), pwd: user.get("pwd"), matriz_errores_promedio: {}, matriz_tiempo_teclas: {}, wpm: 0, age: 0 }),
+        body: JSON.stringify({ username: user.get("name"), email: user.get("email"), pwd: user.get("pwd"), keyData: []}),
         headers: { "Content-type": "application/json;charset=UTF-8" },
         method: "POST"
     })

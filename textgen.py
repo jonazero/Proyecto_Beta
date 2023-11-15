@@ -10,14 +10,6 @@ model = BloomForCausalLM.from_pretrained("bigscience/bloom-1b1").to(torch_device
 # Añadir un nuevo token especial para usarlo como token de relleno
 tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 
-# Lista de textos de inicio para generar oraciones desde ellos
-starting_text = ["El", "La", "Mi", "Ella",
-                 "Había", "Una", "Su", "Sus", "Ellos", "Las", "Los", "De"]
-
-# Lista de palabras que el modelo debe intentar incluir en las oraciones generadas si es posible
-force_flexible = [' gato', ' ciudad', ' libro', "casa"] 
-
-
 def generateSentences(force_flexible: list, starting_text: list):
     # Convertir las palabras forzadas a ids de entrada para el modelo
     force_words_ids = [tokenizer(
@@ -52,4 +44,3 @@ def generateSentences(force_flexible: list, starting_text: list):
     # Devolver una lista de oraciones generadas
     return generated_texts
 
-print(generateSentences(force_flexible, starting_text))

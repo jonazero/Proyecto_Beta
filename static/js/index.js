@@ -62,24 +62,18 @@ const typingText = document.querySelector(".typing-text p"),
   };
 
 var timer,
-  maxTime = 600,
-  timeLeft = maxTime,
-  charIndex = 0,
   mainNav = document.getElementById("main-nav"),
   navbarToggle = document.getElementById("navbar-toggle"),
   container = document.getElementById("container"),
   delayinput = document.getElementById("inputValue"),
   btncontainer = document.getElementById("buttonContainer"),
   capturedImageElement = document.getElementById("capturedImage"),
-  generatedpan = "",
   pc = null,
   dc = null,
   constraints = null,
   currentStream,
   canvas = document.createElement("canvas"),
-  context = canvas.getContext("2d"),
-  testData = [],
-  cameraData = [];
+  context = canvas.getContext("2d");
 
 delayinput.onchange = function () {
   inpField.focus();
@@ -245,7 +239,7 @@ async function start() {
   dc.onopen = function () {
     console.log("data channel created");
     captureWebcam();
-    coordinate(0);
+    coordinate();
   };
 }
 
@@ -271,8 +265,16 @@ function captureWebcam() {
   }
 }
 
-async function coordinate(stat) {
-  if (stat === 0) {
+async function coordinate() {
+  let testData = sessionStorage.getItem("testData");
+  if (testData === null) {
+    testData = await getuserParams();
+    if (testData.length === 0) {
+      testData = null;
+    }
+  }
+  async function CapturarDatosCamara() {
+    let cameraData = [];
     alert(
       "Por favor escribe las siguientes oraciones con los dedos que se indican. \nEVITA HACERLO DEMASIADO RAPIDO"
     );
@@ -284,39 +286,21 @@ async function coordinate(stat) {
       let resp = await TypeText(sentence, 0);
       cameraData.push(...resp);
     }
-    console.log(JSON.stringify(cameraData));
     dc.send(JSON.stringify({ programPhase: 2, cameraData }));
-    stat = 1;
     sessionStorage.setItem("cameraData", JSON.stringify(cameraData));
+    return cameraData;
   }
-  if (stat === 1) {
-    createToast(
-      "info",
-      "Comencemos practicando los siguientes ejercicios.",
-      4000
-    );
-    let dd = [];
-    let dataretreived = "";
-    if (dataretreived === "") {
-      let phrases = [];
-      let sentence = await loadParagraph(
-        paragraphs[Math.floor(Math.random() * paragraphs.length)]
+  async function CapturarDatos(cameraData, testData) {
+    let sentences = [];
+    let correct_keys = [];
+    if (testData.length === 0) {
+      createToast(
+        "info",
+        "Comencemos practicando los siguientes ejercicios.",
+        4000
       );
-      let resp = await TypeText(sentence, 1);
-      testData.push(...resp);
-      testData.forEach((element) => {
-        if (element["coords"] !== null) {
-          cameraData.push(element);
-        }
-      });
-      resp.forEach((element) => {
-        if (element["coords"] !== null) {
-          dd.push(element);
-        }
-      });
-      console.log("este es dd: ", JSON.stringify(dd));
-      dc.send(JSON.stringify({ programPhase: 2, cameraData: dd }));
-      dd = [];
+      sentences = [paragraphs[Math.floor(Math.random() * paragraphs.length)]];
+    } else {
       loadSpinner(true);
       try {
         const response = await fetch("/words/", {
@@ -325,41 +309,37 @@ async function coordinate(stat) {
           method: "POST",
         });
         const data = await handleErrors(response).json();
-        phrases = data.oraciones;
+        sentences = data.oraciones;
+        loadSpinner(false);
       } catch (error) {
         console.error(error.message);
       }
-      loadSpinner(false);
-      for (let index = 0; index < phrases.length; index++) {
-        let sentence = await loadParagraph(phrases[index]);
-        let resp = await TypeText(sentence, 1);
-        testData.push(...resp);
-      }
-      
-      coordinate(1);
-    } else {
     }
-  }
-}
-function GetImportantKeys(camera_coords, benchmark_coords, maxdistane) {
-  const keysWithDiff = [];
-  for (const key in camera_coords) {
-    if (benchmark_coords.hasOwnProperty(key)) {
-      const coords1 = camera_coords[key];
-      const coords2 = benchmark_coords[key];
-      distance = euclideanDistance(coords1, coords2);
-      if (distance >= maxdistane) {
-        keysWithDiff.push(key);
-      }
+    for (let i = 0; i < sentences.length; i++) {
+      let sentence = await loadParagraph(sentences[i]);
+      let response = await TypeText(sentence, 1);
+      testData.push(...response);
+      response.forEach((key) => {
+        if (key["coords"] !== null) {
+          cameraData.push(key);
+          correct_keys.push(key);
+        }
+      });
     }
+    dc.send(JSON.stringify({ programPhase: 2, cameraData: correct_keys }));
+    return [testData, cameraData];
   }
-  return keysWithDiff;
-}
-
-function euclideanDistance(point1, point2) {
-  const deltaX = point2[0] - point1[0];
-  const deltaY = point2[1] - point1[1];
-  return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  //console.log("este es userparams: ", await getuserParams());
+  let cameraData = await CapturarDatosCamara();
+  stadistics.style.display = "flex";
+  if (testData === null) {
+    [testData, cameraData] = await CapturarDatos(cameraData, []);
+    await updateUser(testData);
+  }
+  while (true) {
+    [testData, cameraData] = await CapturarDatos(cameraData, testData);
+    await updateUser(testData);
+  }
 }
 
 function stop() {
@@ -423,64 +403,6 @@ function resetSound() {
   });
 }
 
-function initTyping(kp) {
-  let characters = typingText.querySelectorAll("span");
-  let iskeywrong = false;
-  if (charIndex <= characters.length) {
-    if (!isTyping) {
-      timer = setInterval(initTimer, 1000);
-      isTyping = true;
-    }
-    if (kp == null) {
-      if (charIndex > 0) {
-        charIndex--;
-        if (characters[charIndex].classList.contains("incorrect")) {
-          mistakes--;
-        }
-        characters[charIndex].classList.remove("correct", "incorrect");
-      }
-    } else {
-      if (characters[charIndex].innerText == kp) {
-        characters[charIndex].classList.add("correct");
-        playSound("sound-key");
-        iskeywrong = false;
-      } else {
-        mistakes++;
-        characters[charIndex].classList.add("incorrect");
-        playSound("sound-mistake");
-        iskeywrong = true;
-      }
-      charIndex++;
-    }
-    characters.forEach((span) => span.classList.remove("active"));
-    if (charIndex < characters.length - 1) {
-      characters[charIndex].classList.add("active");
-    }
-    let wpm = Math.round(
-      ((charIndex - mistakes) / 5 / (maxTime - timeLeft)) * 60
-    );
-    wpm = wpm < 0 || !wpm || wpm === Infinity ? 0 : wpm;
-
-    wpmTag.innerText = wpm;
-    mistakeTag.innerText = mistakes;
-    cpmTag.innerText = charIndex - mistakes;
-  }
-  return iskeywrong;
-}
-
-function initTimer() {
-  if (timeLeft > 0) {
-    timeLeft--;
-    timeTag.innerText = timeLeft;
-    let wpm = Math.round(
-      ((charIndex - mistakes) / 5 / (maxTime - timeLeft)) * 60
-    );
-    wpmTag.innerText = wpm;
-  } else {
-    clearInterval(timer);
-  }
-}
-
 async function getuserParams() {
   try {
     let response = await fetch("/user/params", {
@@ -490,6 +412,23 @@ async function getuserParams() {
     });
     let data = await handleErrors(response).json();
     return data;
+  } catch (error) {
+    console.error(error.message);
+  }
+}
+
+async function updateUser(data) {
+  try {
+    let response = await fetch("/user/update", {
+      body: JSON.stringify(data),
+      headers: {
+        Authorization: "Bearer " + window.sessionStorage.getItem("jwt"),
+        "Content-type": "application/json;charset=UTF-8",
+      },
+      method: "POST",
+    });
+    let d = await handleErrors(response).json();
+    return d;
   } catch (error) {
     console.error(error.message);
   }
@@ -528,6 +467,8 @@ async function TypeText(sentence, programPhase) {
   let chunks = []; // Array to store the chunks of the current frame
   let characters = typingText.querySelectorAll("span");
   let error = false;
+  const startTime = Date.now();
+  let wordsTyped = 0;
   dc.bufferedAmountLowThreshold = CHUNK_SIZE;
   dc.addEventListener("bufferedamountlow", sendChunks);
   dc.onmessage = (e) => {
@@ -542,6 +483,7 @@ async function TypeText(sentence, programPhase) {
       let keyTime = Date.now();
       if (error === false) {
         if (key === sentence[keyIndex]) {
+          cpmTag.textContent = parseInt(cpmTag.textContent) + 1;
           characters[keyIndex].classList.add("correct");
           characters[keyIndex].classList.remove("active");
           playSound("sound-key");
@@ -565,6 +507,7 @@ async function TypeText(sentence, programPhase) {
             coords: null,
             time: keyTime,
           });
+          mistakeTag.textContent = parseInt(mistakeTag.textContent) + 1;
           characters[keyIndex].classList.add("incorrect");
           characters[keyIndex].classList.remove("active");
           playSound("sound-mistake");
@@ -579,8 +522,19 @@ async function TypeText(sentence, programPhase) {
           keyIndex = 0;
           document.removeEventListener("keypress", onKeyPress);
           await new Promise((r) => setTimeout(r, 1000)); //espera 1s a que se obtenga el resultado
+          cpmTag.textContent = 0;
+          mistakeTag.textContent = 0;
+          wpmTag.textContent = 0;
           resolve(correctKeys);
         } else {
+          const currentCharacter = sentence[keyIndex];
+          if (/\s/.test(currentCharacter)) {
+            wordsTyped++;
+            const endTime = Date.now();
+            const totalTimeInMinutes = (endTime - startTime) / (1000 * 60);
+            const wpm = Math.round(wordsTyped / totalTimeInMinutes);
+            wpmTag.textContent = wpm;
+          }
           keyIndex++;
           showFinger(sentence[keyIndex]);
           characters[keyIndex].classList.add("active");
@@ -655,6 +609,8 @@ async function TypeText(sentence, programPhase) {
     if ("error" in jsonData) {
       playSound("sound-mistake");
       error = true;
+      cpmTag.textContent = parseInt(cpmTag.textContent) - 1;
+      mistakeTag.textContent = parseInt(mistakeTag.textContent) + 1;
       createToast("error", jsonData["error"], 2000);
       chunks = [];
       for (let i = dataIndex; i <= keyIndex; i++) {

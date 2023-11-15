@@ -1,8 +1,11 @@
+from decimal import Decimal
+from typing import List
 from .db import dynamodb
 from botocore.exceptions import ClientError
 from fastapi.responses import JSONResponse
 from boto3.dynamodb.conditions import Key
-
+from models.user import User, UserData, ArrayRequest
+import json
 table = dynamodb.Table("users")
 
 
@@ -61,17 +64,21 @@ def delete_user(user: dict):
         return JSONResponse(content=e.response["Error"], status_code=500)
 
 
-def update_user(user: dict):
+def update_user(keyData: List[ArrayRequest], user: User):
+    json_data = [dict(obj) for obj in keyData]
+    for obj in json_data:
+        if obj["coords"] is not None:
+            obj["coords"] = [Decimal(obj["coords"][0]), Decimal(obj["coords"][1])]
     try:
         response = table.update_item(
             Key={
-                "id": user["id"],
-                "created_at": user["created_at"]
+                "id": user.id,
+                "created_at": user.created_at
             },
-            UpdateExpression="SET username = :username, age = :age",
+            UpdateExpression="SET keyData = list_append(keyData, :keyData)",
+            #UpdateExpression="SET keyData = :keyData",
             ExpressionAttributeValues={
-                ":username": user["username"],
-                ":age": user["age"]
+                ":keyData": json_data,
             }
         )
         return response

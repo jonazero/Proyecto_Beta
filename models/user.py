@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, EmailStr
 from uuid import uuid4
 from datetime import datetime
+from typing import Optional, List
 
 
 def generate_id():
@@ -10,17 +11,20 @@ def generate_id():
 def generate_date():
     return str(datetime.now())
 
+class ArrayRequest(BaseModel):
+    key: str
+    coords: Optional[List[float]]
+    time: int
 
 class User(BaseModel):
     id: str = Field(default_factory=generate_id)
     username: str
     email: EmailStr
     pwd: str
-    
     created_at: str = Field(default_factory=generate_date)
+    keyData: List[ArrayRequest]
 
 
-class UserParamsModel(BaseModel):
-    matriz_errores_promedio: dict
-    matriz_tiempo_teclas: dict
-    wpm: int
+
+class UserData(BaseModel):
+    keyData: List[ArrayRequest]

@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
@@ -6,9 +7,9 @@ from fastapi.security import OAuth2PasswordBearer
 from db import is_token_blacklisted
 from database.dict import query_database
 from database.user import get_by_email
-from starlette.responses import JSONResponse
-from models.user import UserParamsModel
-from models.dictionary import Word
+from models.user import User
+from models.dictionary import Word, ArrayRequest
+from typing import List
 # Create a fake db:
 FAKE_DB = {'jonazeroenigma@gmail.com': {'name': 'Jonathan Israel Diaz Guevara'}}
 
@@ -78,6 +79,21 @@ def decode_token(token):
     return jwt.decode(token, API_SECRET_KEY, algorithms=[API_ALGORITHM])
 
 
+async def add_data(token: str = Depends(oauth2_scheme)):
+    if is_token_blacklisted(token):
+        print("blacklisted token")
+        raise CREDENTIALS_EXCEPTION
+    try:
+        payload = decode_token(token)
+        email: str = payload.get('sub')
+        if email is None:
+            print("email is none")
+            raise CREDENTIALS_EXCEPTION
+    except JWTError:
+        print("credential exception")
+        raise CREDENTIALS_EXCEPTION
+    
+
 async def get_current_user_params(token: str = Depends(oauth2_scheme)):
     if is_token_blacklisted(token):
         print("blacklisted token")
@@ -92,10 +108,33 @@ async def get_current_user_params(token: str = Depends(oauth2_scheme)):
         print("credential exception")
         raise CREDENTIALS_EXCEPTION
     params = get_by_email(email)
+    if len(params["keyData"]) != 0:
+        array_requests: List[ArrayRequest] = []
+        js = json.dumps(params["keyData"], default=str)
+        ar = json.loads(js)
+        for obj in ar:
+            array_request = ArrayRequest(**obj)
+            array_requests.append(array_request.dict())
+        params["keyData"] = array_requests
     if not params:
         raise CREDENTIALS_EXCEPTION
     else:
-        return UserParamsModel(**params)
+        return User(**params)
+    
+async def get_current_user_email(token: str = Depends(oauth2_scheme)):
+    if is_token_blacklisted(token):
+        print("blacklisted token")
+        raise CREDENTIALS_EXCEPTION
+    try:
+        payload = decode_token(token)
+        email: str = payload.get('sub')
+        if email is None:
+            print("email is none")
+            raise CREDENTIALS_EXCEPTION
+    except JWTError:
+        print("credential exception")
+        raise CREDENTIALS_EXCEPTION
+    return email
 
 
 async def get_words_from_dict(token: str = Depends(oauth2_scheme)):
