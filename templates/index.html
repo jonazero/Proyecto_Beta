@@ -1,98 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <!--<link href="{{ url_for('static', path='/css/style.css') }}" rel="stylesheet">-->
+    <link rel="stylesheet" href="/static/css/inicio.css" />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--link rel="icon" href="{{ url_for('static', path='/img/LOGO.png') }}" type="image/x-icon"-->
+    <link rel="icon" href="/static/img/LOGO.png/" />
+  </head>
 
-<head>
-  <!--<link href="{{ url_for('static', path='/css/style.css') }}" rel="stylesheet">--> 
-  <link rel="stylesheet" href="/static/css/inicio.css"/>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="{{ url_for('static', path='/img/LOGO.png') }}" type="image/x-icon">
-</head>
-
-<body onload="start()">
-  <ul class="notifications"></ul>
-  <nav class="navbar">
-    <span id="navbar-toggle">
-      <i class="fas fa-bars"></i>
-    </span>
-    <a id="logo"><img src="{{ url_for('static', path='/img/LOGO.png') }}" alt="LOGO"></a>
-    <ul id="main-nav">
-      <li>
-        <a href="#" class="nav-links">Inicio</a>
-      </li>
-      <li>
-        <a href="/estadisticas" class="nav-links">Estadisticas</a>
-      </li>
-    </ul>
-  </nav>
-  <div class="page-wrapper">
-    <div class="loading-spinner"></div>
-  </div>
-  <div class="wrapper">
-    <input type="text" class="input-field">
-    <div class="content-box">
-      <div class="typing-text">
-        <p id="par"></p>
-      </div>
-      <div class="content">
-        <ul class="result-details">
-          <li class="mistake">
-            <p>Errores:</p>
-            <span>0</span>
-          </li>
-          <li class="wpm">
-            <p>Palabras por minuto:</p>
-            <span>0</span>
-          </li>
-          <li class="cpm">
-            <p>Teclas correctas:</p>
-            <span>0</span>
-          </li>
-        </ul>
-        <button>Intentalo de nuevo</button>
+  <body onload="start()">
+    <ul class="notifications"></ul>
+    <nav class="navbar">
+      <span id="navbar-toggle">
+        <i class="fas fa-bars"></i>
+      </span>
+      <a id="logo"><img src="/static/img/LOGO.png" alt="LOGO" /></a>
+      <ul id="main-nav">
+        <li>
+          <a href="#" class="nav-links">Inicio</a>
+        </li>
+        <li>
+          <a href="/estadisticas" class="nav-links">Estadisticas</a>
+        </li>
+      </ul>
+    </nav>
+    <div class="page-wrapper">
+      <div class="loading-spinner"></div>
+    </div>
+    <div class="wrapper">
+      <input type="text" class="input-field" />
+      <div class="content-box">
+        <div class="typing-text">
+          <p id="par"></p>
+        </div>
+        <div class="content">
+          <ul class="result-details">
+            <li class="mistake">
+              <p>Errores:</p>
+              <span>0</span>
+            </li>
+            <li class="wpm">
+              <p>Palabras por minuto:</p>
+              <span>0</span>
+            </li>
+            <li class="cpm">
+              <p>Teclas correctas:</p>
+              <span>0</span>
+            </li>
+          </ul>
+          <button>Intentalo de nuevo</button>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="hands">
-    <img id="ii" src="{{ url_for('static', path='/img/manos/1.png') }}" width="80" alt="LOGO">
-    <img id="id" src="{{ url_for('static', path='/img/manos/2.png') }}" width="80" alt="LOGO2">
-  </div>
-  <div id="container" style="display: block;">
-    <div class="select">
-      <label for="videoSource">Dispositivo: </label>
-      <select id="videoSource"></select>
-      <label for="inputValue">Delay: </label>
-      <input type="number" id="inputValue" value="100" step="1" min="0" pattern="\d+(\.\d+)?" required>
+    <div class="hands">
+      <!--img id="ii" src="{{ url_for('static', path='/img/manos/1.png') }}" width="80" alt="LOGO"-->
+      <img id="ii" src="/static/img/manos/1.png.png" width="80" alt="LOGO" />
+      <!--img id="id" src="{{ url_for('static', path='/img/manos/2.png') }}" width="80" alt="LOGO2"-->
+      <img id="id" src="/static/img/manos/2.png.png" width="80" alt="LOGO" />
     </div>
-    <div class="media">
-      <video id="video" autoplay="true" playsinline="true"></video>
-      <div id="buttonContainer" style="display: none;">
-        <button class="captureButton" id="btn-flip-hor">
-          <img src="{{ url_for('static', path='/img/flip-horizontal.png') }}" alt="Voltear horizontalmente">
-        </button>
-        <button class="captureButton" id="btn-flip-ver">
-          <img src="{{ url_for('static', path='/img/flip-vertical.png') }}" alt="Voltear verticalmente">
-        </button>
+    <div id="container" style="display: block">
+      <div class="select">
+        <label for="videoSource">Dispositivo: </label>
+        <select id="videoSource"></select>
+        <label for="inputValue">Delay: </label>
+        <input
+          type="number"
+          id="inputValue"
+          value="100"
+          step="1"
+          min="0"
+          pattern="\d+(\.\d+)?"
+          required
+        />
       </div>
-      <img id="capturedImage" style="display:none">
+      <div class="media">
+        <video id="video" autoplay="true" playsinline="true"></video>
+        <div id="buttonContainer" style="display: none">
+          <button class="captureButton" id="btn-flip-hor">
+            <!--img src="{{ url_for('static', path='/img/flip-horizontal.png') }}" alt="Voltear horizontalmente"-->
+            <img
+              src="/static/img/flip-horizontal.png"
+              alt="Voltear horizontalmente"
+            />
+          </button>
+          <button class="captureButton" id="btn-flip-ver">
+            <!--img src="{{ url_for('static', path='/img/flip-vertical.png') }}" alt="Voltear verticalmente"-->
+            <img
+              src="/static/img/flip-vertical.png"
+              alt="Voltear verticalmente"
+            />
+          </button>
+        </div>
+        <img id="capturedImage" style="display: none" />
+      </div>
     </div>
-  </div>
 
-  <audio id="sound-key" controls style="display:none">
-    <source src="{{ url_for('static', path='/audio/type.mp3') }}" type="audio/mpeg"> Your browser does
-    not support the audio element.
-  </audio>
+    <audio id="sound-key" controls style="display: none">
+      <!--source src="{{ url_for('static', path='/audio/type.mp3') }}" type="audio/mpeg"-->
+      <source src="/static/audio/type.mp3" type="audio/mpeg" />
+    </audio>
 
-  <audio id="sound-mistake" controls style="display: none">
-    <source src="{{ url_for('static', path='/audio/mistake.mp3') }}" type="audio/mpeg"> Your browser does
-    not support the audio element.
-  </audio>
+    <audio id="sound-mistake" controls style="display: none">
+      <!--source src="{{ url_for('static', path='/audio/mistake.mp3') }}" type="audio/mpeg"-->
+      <source src="/static/audio/mistake.mp3" type="audio/mpeg" />
+    </audio>
 
-  <script src="/static/js/paragraph.js"></script>
-  <script src="/static/js/index.js"></script>
-  <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/all.js"
-    integrity="sha384-xymdQtn1n3lH2wcu0qhcdaOpQwyoarkgLVxC/wZ5q7h9gHtxICrpcaSUfygqZGOe"
-    crossorigin="anonymous"></script>
-</body>
+    <script src="/static/js/paragraph.js"></script>
+    <script src="/static/js/index.js"></script>
+    <script
+      defer
+      src="https://use.fontawesome.com/releases/v5.0.13/js/all.js"
+      integrity="sha384-xymdQtn1n3lH2wcu0qhcdaOpQwyoarkgLVxC/wZ5q7h9gHtxICrpcaSUfygqZGOe"
+      crossorigin="anonymous"
+    ></script>
+  </body>
 </html>

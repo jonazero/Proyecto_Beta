@@ -2,11 +2,13 @@
 <html lang="en">
 
 <head>
-    <link href="{{ url_for('static', path='/css/estadisticas.css') }}" rel="stylesheet">
+    <!--link href="{{ url_for('static', path='/css/estadisticas.css') }}" rel="stylesheet"-->
+    <link href="/static/css/estadisticas.css" rel="stylesheet">
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="{{ url_for('static', path='/img/LOGO.png') }}" type="image/x-icon">
+    <!--link rel="icon" href="{{ url_for('static', path='/img/LOGO.png') }}" type="image/x-icon"-->
+    <link rel="icon" href="/static/img/LOGO.png" type="image/x-icon">
     <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
     <title>FastKey</title>
 </head>
@@ -16,7 +18,8 @@
         <span id="navbar-toggle">
             <i class="fas fa-bars"></i>
         </span>
-        <a href="#" id="logo"><img src="{{ url_for('static', path='/img/LOGO.png') }}" alt="LOGO"></a>
+        <!--a href="#" id="logo"><img src="{{ url_for('static', path='/img/LOGO.png') }}" alt="LOGO"></a-->
+        <a href="/camara" id="logo"><img src="/static/img/LOGO.png" alt="LOGO"></a>
         <ul id="main-nav">
             <li>
                 <a href="/camara" class="nav-links">Regresar</a>
