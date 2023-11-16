@@ -36,7 +36,7 @@ if SECRET_KEY is None:
 auth_app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # Frontend URL:
-FRONTEND_URL = os.getenv('FRONTEND_URL') or "http://localhost:8000/signup"
+FRONTEND_URL = os.getenv('FRONTEND_URL') or "http://https://fastkeys.click/signup"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
